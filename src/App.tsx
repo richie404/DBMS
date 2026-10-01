@@ -1,5 +1,21 @@
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Button, StatusBadge as Badge } from "./components/system";
+import { useAuth } from "./auth/AuthContext";
+import { ApiError } from "./lib/api";
+import { authService } from "./services/auth";
+import type { UserRole } from "./types/auth";
+
+const loginDestinations: Record<UserRole, string> = {
+  renter: "Redirect Renter",
+  owner: "Redirect Owner",
+  admin: "Redirect Admin",
+};
+
+function authErrorMessage(error: unknown) {
+  return error instanceof ApiError && error.status < 500
+    ? error.message
+    : "Unable to complete your request. Please try again.";
+}
 
 const homes = [
   {
@@ -905,33 +921,45 @@ function PropertyDetailsPage({ home, go, saved, onSave, viewHome }: { home?: typ
 }
 
 function AuthPage({ mode, go }: { mode: "login" | "register"; go: (page: string) => void }) {
+  const { setAuthenticatedUser } = useAuth();
+  const submissionPending = useRef(false);
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [apiMessage, setApiMessage] = useState("");
   const register = mode === "register";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
-  const emailError = submitted && !email ? "Required field" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Invalid email" : "";
-  const passwordError = submitted && !password ? "Required field" : status === "error" ? "Incorrect password" : "";
-  const login = () => {
+  const emailError = submitted && !email ? "Required field" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Invalid email" : apiErrors.email ?? "";
+  const passwordError = submitted && !password ? "Required field" : apiErrors.password ?? "";
+  const login = async () => {
+    if (submissionPending.current) return;
     setSubmitted(true);
+    setApiErrors({});
+    setApiMessage("");
     if (!email || !password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     setStatus("loading");
-    window.setTimeout(() => {
-      if (password.toLowerCase() === "wrong") setStatus("error");
-      else {
-        setStatus("success");
-        const accountRole = email.toLowerCase().includes("admin") ? "Admin" : email.toLowerCase().includes("owner") ? "Owner" : "Renter";
-        window.setTimeout(() => go(`Redirect ${accountRole}`), 850);
-      }
-    }, 900);
+    submissionPending.current = true;
+    try {
+      const user = await authService.login({ email, password });
+      setAuthenticatedUser(user);
+      setStatus("success");
+      go(loginDestinations[user.role]);
+    } catch (error) {
+      setApiErrors(error instanceof ApiError && error.status < 500 ? error.errors ?? {} : {});
+      setApiMessage(authErrorMessage(error));
+      setStatus("error");
+    } finally {
+      submissionPending.current = false;
+    }
   };
   return <div className="auth-page">
     <button className="auth-back" onClick={() => go("Home")}><Icon name="arrow" /> Back to Home</button>
     <div className="auth-form-panel"><button className="brand" onClick={() => go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button>
       <div className="auth-form"><p className="eyebrow">{register ? "CREATE YOUR ACCOUNT" : "SECURE ACCOUNT ACCESS"}</p><h1>{register ? "Find your place on RentNest." : "Welcome Back"}</h1><p>{register ? "Join renters and property owners building a better rental experience." : "Login to continue your RentNest journey."}</p>
         {register ? <><div className="role-cards"><button className="active"><Icon name="search" /><strong>I'm looking for a place</strong><small>Browse and book rental homes</small></button><button><Icon name="building" /><strong>I want to list properties</strong><small>Manage homes and bookings</small></button></div><label className="auth-field"><span>Full name</span><input placeholder="Your full name" /></label><label className="auth-field"><span>Username</span><input placeholder="Choose a username" /></label><label className="auth-field"><span>Email address</span><input type="email" placeholder="example@email.com" /></label><label className="auth-field"><span>Password</span><input type="password" placeholder="Enter password" /></label><label className="auth-field"><span>Confirm password</span><input type="password" placeholder="Repeat your password" /></label><Button onClick={() => go("Discover")}>Create Account <Icon name="arrow" /></Button></>
-        : <form onSubmit={e=>{e.preventDefault();login();}} noValidate><label className={`auth-field ${emailError?"has-error":""}`}><span>Email Address</span><input type="email" value={email} onChange={e=>{setEmail(e.target.value);setStatus("idle");}} placeholder="example@email.com" aria-invalid={!!emailError} />{emailError&&<FormError message={emailError}/>} </label><label className={`auth-field ${passwordError?"has-error":""}`}><span>Password</span><div className="password-control"><input type={showPassword?"text":"password"} value={password} onChange={e=>{setPassword(e.target.value);setStatus("idle");}} placeholder="Enter password" aria-invalid={!!passwordError} /><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?"Hide password":"Show password"}><Icon name="eye" size={18} /></button></div>{passwordError&&<FormError message={passwordError}/>} </label><div className="auth-options"><label><input type="checkbox" /> Remember me</label><button type="button" onClick={()=>go("Forgot password")}>Forgot Password?</button></div><button className={`button button-primary login-submit ${status==="loading"?"is-loading":""}`} disabled={status==="loading"||status==="success"}>{status==="loading"?<><i /> Logging in...</>:status==="success"?<>Login successful <span>✓</span></>:<>Log In <Icon name="arrow" /></>}</button></form>}
+        : <form onSubmit={e=>{e.preventDefault();login();}} noValidate><label className={`auth-field ${emailError?"has-error":""}`}><span>Email Address</span><input type="email" value={email} onChange={e=>{setEmail(e.target.value);setApiErrors({});setApiMessage("");}} placeholder="example@email.com" aria-invalid={!!emailError} />{emailError&&<FormError message={emailError}/>} </label><label className={`auth-field ${passwordError?"has-error":""}`}><span>Password</span><div className="password-control"><input type={showPassword?"text":"password"} value={password} onChange={e=>{setPassword(e.target.value);setApiErrors({});setApiMessage("");}} placeholder="Enter password" aria-invalid={!!passwordError} /><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?"Hide password":"Show password"}><Icon name="eye" size={18} /></button></div>{passwordError&&<FormError message={passwordError}/>} </label>{apiMessage&&<FormError message={apiMessage}/>}<div className="auth-options"><label><input type="checkbox" /> Remember me</label><button type="button" onClick={()=>go("Forgot password")}>Forgot Password?</button></div><button className={`button button-primary login-submit ${status==="loading"?"is-loading":""}`} disabled={status==="loading"||status==="success"}>{status==="loading"?<><i /> Logging in...</>:status==="success"?<>Login successful <span>✓</span></>:<>Log In <Icon name="arrow" /></>}</button></form>}
         <p className="auth-switch">{register ? "Already have an account?" : "Don't have an account?"} <button onClick={() => go(register ? "Login" : "Register")}>{register ? "Log In" : "Create Account"}</button></p>{!register && <div className="admin-access"><span>Administrator?</span><button className="admin-login">Admin Login</button></div>}
       </div>
     </div>
@@ -940,31 +968,49 @@ function AuthPage({ mode, go }: { mode: "login" | "register"; go: (page: string)
 }
 
 function RegistrationPage({ go }: { go: (page: string) => void }) {
+  const submissionPending = useRef(false);
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [apiMessage, setApiMessage] = useState("");
   const [role, setRole] = useState<"renter" | "owner">("renter");
   const [fields, setFields] = useState({ name: "", username: "", email: "", password: "", confirm: "" });
   const [submitted, setSubmitted] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
   const setField = (key: keyof typeof fields, value: string) => {
     setFields(current => ({ ...current, [key]: value }));
-    setStatus("idle");
+    setApiErrors(current => ({ ...current, [key === "confirm" ? "confirmPassword" : key]: "" }));
+    setApiMessage("");
   };
   const errors = {
-    name: submitted && !fields.name ? "Full name is required" : "",
-    username: submitted && !fields.username ? "Username is required" : "",
-    email: submitted && !fields.email ? "Email address is required" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) ? "Enter a valid email address" : submitted && fields.email.toLowerCase() === "taken@example.com" ? "An account with this email already exists" : "",
-    password: submitted && !fields.password ? "Password is required" : submitted && fields.password.length < 8 ? "Password is too weak. Use at least 8 characters" : "",
-    confirm: submitted && !fields.confirm ? "Please confirm your password" : submitted && fields.password !== fields.confirm ? "Passwords don't match" : "",
+    name: submitted && !fields.name ? "Full name is required" : apiErrors.name ?? "",
+    username: submitted && !fields.username ? "Username is required" : apiErrors.username ?? "",
+    email: submitted && !fields.email ? "Email address is required" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) ? "Enter a valid email address" : apiErrors.email ?? "",
+    password: submitted && !fields.password ? "Password is required" : submitted && fields.password.length < 8 ? "Password is too weak. Use at least 8 characters" : apiErrors.password ?? "",
+    confirm: submitted && !fields.confirm ? "Please confirm your password" : submitted && fields.password !== fields.confirm ? "Passwords don't match" : apiErrors.confirmPassword ?? "",
   };
-  const createAccount = () => {
+  const createAccount = async () => {
+    if (submissionPending.current) return;
     setSubmitted(true);
-    if (!fields.name || !fields.username || !fields.email || !fields.password || !fields.confirm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) || fields.email.toLowerCase() === "taken@example.com" || fields.password.length < 8 || fields.password !== fields.confirm) return;
+    if (!fields.name || !fields.username || !fields.email || !fields.password || !fields.confirm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) || fields.password.length < 8 || fields.password !== fields.confirm) return;
     setStatus("loading");
-    window.setTimeout(() => setStatus("success"), 1000);
+    setApiErrors({});
+    setApiMessage("");
+    submissionPending.current = true;
+    try {
+      await authService.register({ name: fields.name, username: fields.username, email: fields.email, password: fields.password, confirmPassword: fields.confirm, role });
+      setStatus("success");
+    } catch (error) {
+      setApiErrors(error instanceof ApiError && error.status < 500 ? error.errors ?? {} : {});
+      setApiMessage(authErrorMessage(error));
+      setStatus("idle");
+    } finally {
+      submissionPending.current = false;
+    }
   };
-  if (status === "success") return <div className="registration-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><section className="registration-success"><span>✓</span><p className="eyebrow">WELCOME TO RENTNEST</p><h1>Account created successfully</h1><p>Your {role === "renter" ? "renter" : "property owner"} account is ready. Let's take you to the right place.</p><div className={`success-role role-${role}`}><Icon name={role === "renter" ? "search" : "building"} /><div><small>YOUR ACCOUNT TYPE</small><strong>{role === "renter" ? "Renter" : "Property Owner"}</strong></div></div><Button onClick={()=>go(role === "renter" ? "Discover" : "Owner workspace")}>{role === "renter" ? "Continue to Renter Dashboard" : "Continue to Owner Dashboard"} <Icon name="arrow" /></Button></section></div>;
+  if (status === "success") return <div className="registration-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><section className="registration-success"><span>✓</span><p className="eyebrow">WELCOME TO RENTNEST</p><h1>Account created successfully</h1><p>Your {role === "renter" ? "renter" : "property owner"} account is ready. Let's take you to the right place.</p><div className={`success-role role-${role}`}><Icon name={role === "renter" ? "search" : "building"} /><div><small>YOUR ACCOUNT TYPE</small><strong>{role === "renter" ? "Renter" : "Property Owner"}</strong></div></div><Button onClick={()=>go("Login")}>Continue to Login <Icon name="arrow" /></Button></section></div>;
   return <div className="registration-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><div className="registration-glow glow-one" /><div className="registration-glow glow-two" />
     <section className="registration-card"><button className="brand registration-brand" onClick={()=>go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button><div className="registration-heading"><p className="eyebrow">CREATE YOUR ACCOUNT</p><h1>Start your RentNest journey</h1><p>Choose how you'd like to use RentNest, then tell us a little about yourself.</p></div>
       <div className="registration-roles"><button className={role==="renter"?"selected":""} onClick={()=>setRole("renter")}><span><Icon name="search" /></span><div><small>RENTER</small><strong>I want to find a home</strong><p>Search properties and request bookings.</p></div><i /></button><button className={role==="owner"?"selected":""} onClick={()=>setRole("owner")}><span><Icon name="building" /></span><div><small>PROPERTY OWNER</small><strong>I want to rent out my property</strong><p>Create listings and manage rentals.</p></div><i /></button></div>
+      {apiMessage&&<FormError message={apiMessage}/>}
       <form className="registration-form" onSubmit={e=>{e.preventDefault();createAccount();}} noValidate>
         <label className={`auth-field ${errors.name?"has-error":""}`}><span>Full Name</span><input value={fields.name} onChange={e=>setField("name",e.target.value)} placeholder="Enter your full name" />{errors.name&&<small>{errors.name}</small>}</label>
         <label className={`auth-field ${errors.username?"has-error":""}`}><span>Username</span><input value={fields.username} onChange={e=>setField("username",e.target.value)} placeholder="Choose a username" />{errors.username&&<small>{errors.username}</small>}</label>
