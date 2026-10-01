@@ -1,0 +1,21 @@
+CREATE TABLE users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  username VARCHAR(50) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  phone VARCHAR(32) NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('renter', 'owner', 'admin') NOT NULL,
+  status ENUM('active', 'suspended', 'banned') NOT NULL DEFAULT 'active',
+  avatar_url VARCHAR(2048) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_username (username),
+  KEY idx_users_role (role),
+  KEY idx_users_status (status),
+  CONSTRAINT chk_users_role CHECK (role IN ('renter', 'owner', 'admin')),
+  CONSTRAINT chk_users_status CHECK (status IN ('active', 'suspended', 'banned'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

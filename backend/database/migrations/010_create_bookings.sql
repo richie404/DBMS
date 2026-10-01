@@ -1,0 +1,43 @@
+CREATE TABLE bookings (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  booking_code VARCHAR(50) NULL,
+  property_id INT UNSIGNED NOT NULL,
+  renter_id INT UNSIGNED NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  monthly_rent_snapshot DECIMAL(12,2) NOT NULL,
+  deposit_snapshot DECIMAL(12,2) NOT NULL,
+  total_amount DECIMAL(14,2) NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'BDT',
+  status ENUM('pending', 'approved', 'confirmed', 'rejected', 'cancelled') NOT NULL DEFAULT 'pending',
+  decision_by INT UNSIGNED NULL,
+  decision_at DATETIME NULL,
+  decision_reason TEXT NULL,
+  cancelled_by INT UNSIGNED NULL,
+  cancelled_at DATETIME NULL,
+  cancellation_reason TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_bookings_code (booking_code),
+  KEY idx_bookings_property_dates (property_id, start_date, end_date),
+  KEY idx_bookings_renter (renter_id),
+  KEY idx_bookings_status (status),
+  KEY idx_bookings_created (created_at),
+  KEY idx_bookings_decision_by (decision_by),
+  KEY idx_bookings_cancelled_by (cancelled_by),
+  CONSTRAINT fk_bookings_property FOREIGN KEY (property_id) REFERENCES properties (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_bookings_renter FOREIGN KEY (renter_id) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_bookings_decision_user FOREIGN KEY (decision_by) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT fk_bookings_cancelled_user FOREIGN KEY (cancelled_by) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT chk_bookings_dates CHECK (end_date > start_date),
+  CONSTRAINT chk_bookings_rent CHECK (monthly_rent_snapshot >= 0),
+  CONSTRAINT chk_bookings_deposit CHECK (deposit_snapshot >= 0),
+  CONSTRAINT chk_bookings_total CHECK (total_amount >= 0),
+  CONSTRAINT chk_bookings_status CHECK (status IN ('pending', 'approved', 'confirmed', 'rejected', 'cancelled'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
