@@ -77,10 +77,11 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   if (!response.ok || !payload.success) {
     if (response.status === 401) {
       clearCsrfToken();
-      if (!["/auth/login", "/auth/register", "/auth/me", "/auth/password"].includes(path)) {
+      if (!["/auth/login", "/auth/register", "/auth/me"].includes(path)) {
         window.dispatchEvent(new Event("rentnest:session-ended"));
       }
     }
+    if (response.status === 403 && ["Permission denied", "Account access is unavailable"].includes(payload.message ?? "")) window.dispatchEvent(new Event("rentnest:access-denied"));
     throw new ApiError(response.status, payload.message ?? "Request failed", payload.errors);
   }
   return payload.data as T;

@@ -1,3 +1,4 @@
+import {recordActivity,bookingNotification} from "./activity.service.js";
 import {randomUUID} from "node:crypto";
 import pool from "../config/database.js";
 import {assert} from "../utils/api-error.js";
@@ -36,6 +37,9 @@ export async function createBooking(renterId, body) {
     assert(Number.isSafeInteger(totalCents) && totalCents <= 99999999999999, 400, "Booking amount is too large");
     const [result] = await db.execute("INSERT INTO bookings (booking_code, property_id, renter_id, start_date, end_date, monthly_rent_snapshot, deposit_snapshot, total_amount, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [`RN-${randomUUID()}`, propertyId, renterId, start, end, property.monthly_rent, property.deposit_amount ?? 0, (totalCents / 100).toFixed(2), property.currency]);
     await bookingEvent(db, result.insertId, renterId, null, "pending");
+    const [[created]]=await db.execute("SELECT * FROM bookings WHERE id=?",[result.insertId]);
+    await bookingNotification(db,created,property,"pending");
+    await recordActivity(db,renterId,"booking.created","booking",result.insertId,"Booking request submitted");
     const booking = await findBooking(db, result.insertId, "renter", renterId);
     await db.commit();
     return booking;
@@ -74,6 +78,8 @@ export async function changeBooking(user, bookingId, action, body = {}) {
       await db.execute("UPDATE bookings SET status = ?, decision_by = ?, decision_at = CURRENT_TIMESTAMP, decision_reason = ? WHERE id = ?", [next, user.id, reason, bookingId]);
     }
     await bookingEvent(db, bookingId, user.id, booking.status, next, reason);
+    await bookingNotification(db,booking,property,next);
+    await recordActivity(db,user.id,"booking."+next,"booking",bookingId,"Booking status changed to "+next);
     const result = await findBooking(db, bookingId, scope, user.id);
     await db.commit();
     return result;

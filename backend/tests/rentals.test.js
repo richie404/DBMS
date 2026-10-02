@@ -45,6 +45,9 @@ before(async()=>{
 after(async()=>{
   try {
     for (const propertyId of propertyIds) {
+      await pool.execute("DELETE FROM notifications WHERE property_id=?",[propertyId]);
+      await pool.execute("DELETE l FROM activity_logs l JOIN bookings b ON l.target_type='booking' AND l.target_id=b.id WHERE b.property_id=?",[propertyId]);
+      await pool.execute("DELETE FROM activity_logs WHERE target_type='property' AND target_id=?",[propertyId]);
       await pool.execute("DELETE e FROM booking_events e JOIN bookings b ON b.id=e.booking_id WHERE b.property_id=?",[propertyId]);
       await pool.execute("DELETE FROM bookings WHERE property_id=?",[propertyId]);
       for (const table of ["favorites","property_images","property_amenities"]) await pool.execute(`DELETE FROM ${table} WHERE property_id=?`,[propertyId]);

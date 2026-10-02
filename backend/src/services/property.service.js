@@ -1,3 +1,4 @@
+import {recordActivity,listingNotification} from "./activity.service.js";
 import pool from "../config/database.js";
 import {assert} from "../utils/api-error.js";
 import {findProperty, insertProperty, lockProperty, replacePropertyMedia, updateProperty} from "../models/property.model.js";
@@ -29,6 +30,8 @@ export async function saveProperty(ownerId, propertyId, input) {
     if (propertyId) await updateProperty(db, propertyId, fields);
     await replacePropertyMedia(db, savedId, input.images, input.amenityIds);
     const property = await findProperty(savedId, "owner", ownerId, db);
+    await recordActivity(db,ownerId,propertyId?"property.updated":"property.created","property",savedId,"Listing "+(property.title||savedId));
+    await listingNotification(db,ownerId,savedId,property.title,property.moderationStatus);
     await db.commit();
     return property;
   } catch (error) {await db.rollback(); throw error;}
@@ -61,6 +64,8 @@ export async function moderateProperty(adminId, propertyId, body) {
     assert(property.moderation_status === "pending", 409, "Only pending listings can be reviewed");
     if (body.status === "approved") publishable(property);
     await db.execute("UPDATE properties SET moderation_status = ?, rejection_reason = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?", [body.status, reason, adminId, propertyId]);
+    await listingNotification(db,property.owner_id,propertyId,property.title,body.status);
+    await recordActivity(db,adminId,"listing."+body.status,"property",propertyId,"Listing "+body.status);
     const result = await findProperty(propertyId, "admin", adminId, db);
     await db.commit();
     return result;

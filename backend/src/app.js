@@ -5,6 +5,7 @@ import env from "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
 import healthRoutes from "./routes/health.routes.js";
 import rentalRoutes from "./routes/rental.routes.js";
+import workspaceRoutes from "./routes/workspace.routes.js";
 import notFound from "./middleware/not-found.js";
 import errorHandler from "./middleware/error-handler.js";
 
@@ -25,6 +26,7 @@ app.use("/api/auth", (request, response, next) => {
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", rentalRoutes);
+app.use("/api", workspaceRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
