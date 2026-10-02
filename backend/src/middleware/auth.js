@@ -23,6 +23,7 @@ export async function requireAuth(request, response, next) {
       name: session.name,
       username: session.username,
       email: session.email,
+      phone: session.phone,
       role: session.role,
       status: session.status,
       avatarUrl: session.avatarUrl,

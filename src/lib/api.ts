@@ -67,13 +67,20 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: "include",
+      cache: "no-store",
+      signal: options.signal ?? AbortSignal.timeout(10000),
     });
   } catch {
     throw new ApiError(0, "Unable to reach the RentNest API.");
   }
   const payload = await parseResponse<T>(response);
   if (!response.ok || !payload.success) {
-    if (response.status === 401) clearCsrfToken();
+    if (response.status === 401) {
+      clearCsrfToken();
+      if (!["/auth/login", "/auth/register", "/auth/me", "/auth/password"].includes(path)) {
+        window.dispatchEvent(new Event("rentnest:session-ended"));
+      }
+    }
     throw new ApiError(response.status, payload.message ?? "Request failed", payload.errors);
   }
   return payload.data as T;

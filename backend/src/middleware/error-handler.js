@@ -10,7 +10,7 @@ export default function errorHandler(error, request, response, next) {
       ? "Request body too large"
       : status >= 500
         ? "Internal server error"
-        : "Invalid request";
+        : error.expose ? error.message : "Invalid request";
 
   if (status >= 500) console.error(error);
   response.status(status).json({ success: false, message });

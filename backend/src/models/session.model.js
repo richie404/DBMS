@@ -5,6 +5,7 @@ const safeUserColumns = `
   u.name,
   u.username,
   u.email,
+  u.phone,
   u.role,
   u.status,
   u.avatar_url AS avatarUrl,

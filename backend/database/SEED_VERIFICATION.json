@@ -1,0 +1,88 @@
+{
+  "database": "rentnest",
+  "verifiedAt": "2026-10-02T00:32:01.968Z",
+  "counts": {
+    "properties": 36,
+    "property_images": 108,
+    "amenities": 12,
+    "property_amenities": 144,
+    "favorites": 56,
+    "booking_events": 90,
+    "conversations": 18,
+    "messages": 72,
+    "notifications": 153,
+    "payments": 9,
+    "activity_logs": 81,
+    "platform_settings": 1
+  },
+  "usersByRole": [
+    {
+      "role": "renter",
+      "count": 15
+    },
+    {
+      "role": "owner",
+      "count": 8
+    },
+    {
+      "role": "admin",
+      "count": 2
+    }
+  ],
+  "bookingsByStatus": [
+    {
+      "status": "pending",
+      "count": 9
+    },
+    {
+      "status": "approved",
+      "count": 9
+    },
+    {
+      "status": "confirmed",
+      "count": 9
+    },
+    {
+      "status": "rejected",
+      "count": 9
+    },
+    {
+      "status": "cancelled",
+      "count": 9
+    }
+  ],
+  "consistency": {
+    "conversation_ownership": 0,
+    "message_participants": 0,
+    "booking_roles_dates": 0,
+    "payment_links": 0,
+    "overlapping_approved_bookings": 0,
+    "demo_password_format": 0,
+    "favorite_roles": 0,
+    "booking_event_final_status": 0
+  },
+  "foreignKeysChecked": 30,
+  "logins": [
+    {
+      "email": "renter1@rentnest.test",
+      "role": "renter",
+      "login": "passed",
+      "authenticatedSession": "passed",
+      "logout": "passed"
+    },
+    {
+      "email": "owner1@rentnest.test",
+      "role": "owner",
+      "login": "passed",
+      "authenticatedSession": "passed",
+      "logout": "passed"
+    },
+    {
+      "email": "admin1@rentnest.test",
+      "role": "admin",
+      "login": "passed",
+      "authenticatedSession": "passed",
+      "logout": "passed"
+    }
+  ]
+}
