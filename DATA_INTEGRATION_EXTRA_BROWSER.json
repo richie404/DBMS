@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "name": "Four chart series SQL/API/rendered buckets agree",
+      "pass": true
+    },
+    {
+      "name": "CSV exports all 25 actual matching users, beyond the pagination page",
+      "pass": true
+    },
+    {
+      "name": "owner failure suppresses summary counts",
+      "pass": true
+    },
+    {
+      "name": "owner Retry restores actual counts",
+      "pass": true
+    },
+    {
+      "name": "renter failure suppresses summary counts",
+      "pass": true
+    },
+    {
+      "name": "renter Retry restores actual counts",
+      "pass": true
+    },
+    {
+      "name": "Logged-out private dashboard returns login",
+      "pass": true
+    },
+    {
+      "name": "Same browser account switch clears renter1 favorites and identity",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

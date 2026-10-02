@@ -3,6 +3,8 @@ import env from "./env.js";
 
 const pool = mysql.createPool({
   ...env.database,
+  // Existing DATETIME records use the database wall clock (Asia/Dhaka).
+  timezone: process.env.DB_TIMEZONE || "+06:00",
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 20,

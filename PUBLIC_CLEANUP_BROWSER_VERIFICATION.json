@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-02T17:04:57.018Z",
+  "checks": [
+    "Query, hash, /about and hash /about redirect to public Home without team content",
+    "Desktop navigation and footer remove About and preserve How It Works",
+    "Details retain real description and owner with compact occupied/future availability summary",
+    "Guest Check availability opens one complete calendar in existing booking modal",
+    "Reserved periods, proposed conflict and future-month navigation remain functional",
+    "Request Booking uses same modal; guest sees whole-month checkout, rent estimate and separate deposit",
+    "390px mobile details and shared modal have no horizontal overflow",
+    "Booking continuation requires login and returns to same selected property without automatically booking",
+    "Authenticated quote rejects entire overlapping interval and refreshes calendar",
+    "Free future two-month request persists with server-calculated rent and separate deposit",
+    "Booking state survives refresh",
+    "Mobile landing has no About/team content and logout remains functional"
+  ],
+  "errors": []
+}

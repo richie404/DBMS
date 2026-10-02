@@ -41,7 +41,8 @@ after(async () => {
        WHERE u.email IN (${createdEmails.map(() => "?").join(", ")})`,
       createdEmails,
     );
-    await pool.execute(`DELETE FROM users WHERE email IN (${createdEmails.map(() => "?").join(", ")})`, createdEmails);
+    await pool.execute(`DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE email IN (${createdEmails.map(() => "?").join(", ")}))`, createdEmails);
+await pool.execute(`DELETE FROM users WHERE email IN (${createdEmails.map(() => "?").join(", ")})`, createdEmails);
   }
   await pool.end();
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

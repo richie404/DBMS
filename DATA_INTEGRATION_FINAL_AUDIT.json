@@ -1,0 +1,19 @@
+{
+  "counts": {
+    "users": 25,
+    "properties": 36,
+    "bookings": 45,
+    "favorites": 56,
+    "conversations": 18,
+    "messages": 72,
+    "notifications": 153,
+    "payments": 9,
+    "activity_logs": 83
+  },
+  "unchanged": true,
+  "backendStatus": 200,
+  "frontendStatus": 200,
+  "checks": 35,
+  "metrics": 26,
+  "browserErrors": []
+}

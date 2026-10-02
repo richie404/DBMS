@@ -1,0 +1,1234 @@
+{
+  "clock": [
+    {
+      "db": "rentnest",
+      "sessionTimezone": "SYSTEM",
+      "systemTimezone": "Asia/Dhaka",
+      "now": "2026-10-02T17:24:25.000Z",
+      "utc": "2026-10-02T11:24:25.000Z"
+    }
+  ],
+  "tables": [
+    {
+      "Tables_in_rentnest": "activity_logs"
+    },
+    {
+      "Tables_in_rentnest": "amenities"
+    },
+    {
+      "Tables_in_rentnest": "booking_events"
+    },
+    {
+      "Tables_in_rentnest": "bookings"
+    },
+    {
+      "Tables_in_rentnest": "conversations"
+    },
+    {
+      "Tables_in_rentnest": "favorites"
+    },
+    {
+      "Tables_in_rentnest": "messages"
+    },
+    {
+      "Tables_in_rentnest": "notifications"
+    },
+    {
+      "Tables_in_rentnest": "password_reset_tokens"
+    },
+    {
+      "Tables_in_rentnest": "payments"
+    },
+    {
+      "Tables_in_rentnest": "platform_settings"
+    },
+    {
+      "Tables_in_rentnest": "properties"
+    },
+    {
+      "Tables_in_rentnest": "property_amenities"
+    },
+    {
+      "Tables_in_rentnest": "property_images"
+    },
+    {
+      "Tables_in_rentnest": "schema_migrations"
+    },
+    {
+      "Tables_in_rentnest": "sessions"
+    },
+    {
+      "Tables_in_rentnest": "user_preferences"
+    },
+    {
+      "Tables_in_rentnest": "users"
+    }
+  ],
+  "counts": {
+    "users": 25,
+    "properties": 36,
+    "bookings": 45,
+    "favorites": 56,
+    "conversations": 18,
+    "messages": 72,
+    "notifications": 153,
+    "payments": 9,
+    "activity_logs": 83
+  },
+  "users": [
+    {
+      "id": 79,
+      "name": "Ayesha Rahman",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 80,
+      "name": "Tanvir Hasan",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 81,
+      "name": "Nusrat Jahan",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 82,
+      "name": "Farhan Ahmed",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 83,
+      "name": "Sadika Islam",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 84,
+      "name": "Mehedi Hossain",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 85,
+      "name": "Raisa Chowdhury",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 86,
+      "name": "Arif Mahmud",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 87,
+      "name": "Sabrina Akter",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 88,
+      "name": "Imran Kabir",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 89,
+      "name": "Nabila Sultana",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 90,
+      "name": "Shafiq Alam",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 91,
+      "name": "Tahmina Haque",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 92,
+      "name": "Rafiul Karim",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 93,
+      "name": "Sumaiya Zaman",
+      "role": "renter",
+      "status": "active"
+    },
+    {
+      "id": 94,
+      "name": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 95,
+      "name": "Shamima Begum",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 96,
+      "name": "Kamal Uddin",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 97,
+      "name": "Nadia Karim",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 98,
+      "name": "Masud Rana",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 99,
+      "name": "Fahmida Akter",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 100,
+      "name": "Anisul Haque",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 101,
+      "name": "Salma Rahman",
+      "role": "owner",
+      "status": "active"
+    },
+    {
+      "id": 102,
+      "name": "Nafisa Ahmed",
+      "role": "admin",
+      "status": "active"
+    },
+    {
+      "id": 103,
+      "name": "Adnan Islam",
+      "role": "admin",
+      "status": "active"
+    }
+  ],
+  "settings": [
+    {
+      "timezone": "Asia/Dhaka",
+      "currency": "BDT"
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "activity_logs",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "actor_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "action",
+      "column_type": "varchar(100)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "target_type",
+      "column_type": "varchar(50)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "target_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "outcome",
+      "column_type": "enum('success','warning','failure')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "description",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "source_ip",
+      "column_type": "varchar(45)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "activity_logs",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "amenities",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "amenities",
+      "column_name": "code",
+      "column_type": "varchar(50)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "amenities",
+      "column_name": "display_name",
+      "column_type": "varchar(100)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "amenities",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "booking_code",
+      "column_type": "varchar(50)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "renter_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "start_date",
+      "column_type": "date",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "end_date",
+      "column_type": "date",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "monthly_rent_snapshot",
+      "column_type": "decimal(12,2)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "deposit_snapshot",
+      "column_type": "decimal(12,2)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "total_amount",
+      "column_type": "decimal(14,2)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "currency",
+      "column_type": "char(3)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "status",
+      "column_type": "enum('pending','approved','confirmed','rejected','cancelled')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "decision_by",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "decision_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "decision_reason",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "cancelled_by",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "cancelled_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "cancellation_reason",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "bookings",
+      "column_name": "deleted_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "booking_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "actor_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "previous_status",
+      "column_type": "enum('pending','approved','confirmed','rejected','cancelled')",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "new_status",
+      "column_type": "enum('pending','approved','confirmed','rejected','cancelled')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "reason",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "booking_events",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "renter_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "owner_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "disabled_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "disabled_reason",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "conversations",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "favorites",
+      "column_name": "user_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "favorites",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "favorites",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "conversation_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "sender_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "message_text",
+      "column_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "sent_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "delivered_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "messages",
+      "column_name": "read_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "user_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "category",
+      "column_type": "enum('booking','message','listing')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "title",
+      "column_type": "varchar(255)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "body",
+      "column_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "booking_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "conversation_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "read_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "notifications",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "user_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "token_hash",
+      "column_type": "varchar(128)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "expires_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "used_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "password_reset_tokens",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "reference_code",
+      "column_type": "varchar(50)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "booking_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "payer_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "payee_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "record_type",
+      "column_type": "enum('charge','payout','refund')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "amount",
+      "column_type": "decimal(14,2)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "currency",
+      "column_type": "char(3)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "status",
+      "column_type": "enum('pending','processing','completed','failed','refunded')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "transaction_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "external_reference",
+      "column_type": "varchar(255)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "notes",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "payments",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "id",
+      "column_type": "tinyint(3) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "platform_name",
+      "column_type": "varchar(100)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "support_email",
+      "column_type": "varchar(254)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "currency",
+      "column_type": "char(3)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "timezone",
+      "column_type": "varchar(64)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "review_target_hours",
+      "column_type": "smallint(5) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "session_timeout_minutes",
+      "column_type": "smallint(5) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "maintenance_mode",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "updated_by",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "platform_settings",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "owner_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "title",
+      "column_type": "varchar(200)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "description",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "location",
+      "column_type": "varchar(255)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "property_type",
+      "column_type": "enum('room','studio','flat','apartment','office','parking')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "monthly_rent",
+      "column_type": "decimal(12,2)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "deposit_amount",
+      "column_type": "decimal(12,2)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "currency",
+      "column_type": "char(3)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "size_sqft",
+      "column_type": "decimal(10,2)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "bedrooms",
+      "column_type": "smallint(5) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "bathrooms",
+      "column_type": "smallint(5) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "furnished",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "bachelor_allowed",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "family_allowed",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "moderation_status",
+      "column_type": "enum('draft','pending','approved','rejected')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "is_available",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "available_from",
+      "column_type": "date",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "rejection_reason",
+      "column_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "reviewed_by",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "reviewed_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "deleted_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "property_amenities",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_amenities",
+      "column_name": "amenity_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "property_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "image_path",
+      "column_type": "varchar(2048)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "sort_order",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "is_primary",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "property_images",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "schema_migrations",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "schema_migrations",
+      "column_name": "migration_name",
+      "column_type": "varchar(255)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "schema_migrations",
+      "column_name": "executed_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "user_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "token_hash",
+      "column_type": "varchar(128)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "device_description",
+      "column_type": "varchar(255)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "last_used_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "expires_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "sessions",
+      "column_name": "revoked_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "users",
+      "column_name": "id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "name",
+      "column_type": "varchar(150)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "username",
+      "column_type": "varchar(50)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "email",
+      "column_type": "varchar(254)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phone",
+      "column_type": "varchar(32)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "users",
+      "column_name": "password_hash",
+      "column_type": "varchar(255)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "role",
+      "column_type": "enum('renter','owner','admin')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "status",
+      "column_type": "enum('active','suspended','banned')",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "avatar_url",
+      "column_type": "varchar(2048)",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "users",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "users",
+      "column_name": "deleted_at",
+      "column_type": "datetime",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "user_id",
+      "column_type": "int(10) unsigned",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "booking_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "message_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "favorite_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "marketing_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "created_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "updated_at",
+      "column_type": "datetime",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "security_alert_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "moderation_queue_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "payment_incident_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "system_health_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "user_preferences",
+      "column_name": "scheduled_report_notifications",
+      "column_type": "tinyint(1)",
+      "is_nullable": "NO"
+    }
+  ]
+}

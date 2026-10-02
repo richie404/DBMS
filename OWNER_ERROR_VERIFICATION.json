@@ -1,0 +1,9 @@
+{
+  "checks": [
+    "500 summary failure shows retryable error and suppresses misleading counts",
+    "Retry recovers genuine owner summary records",
+    "Malformed direct-URL listing criteria remain safe with useful empty state",
+    "Owner notification filter survives refresh"
+  ],
+  "errors": []
+}

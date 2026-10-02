@@ -30,7 +30,8 @@ after(async () => {
   await pool.execute("DELETE s FROM sessions AS s INNER JOIN users AS u ON u.id=s.user_id WHERE u.email=?", [email]);
   await pool.execute("DELETE t FROM password_reset_tokens AS t INNER JOIN users AS u ON u.id=t.user_id WHERE u.email=?", [email]);
   await pool.execute("DELETE p FROM user_preferences AS p INNER JOIN users AS u ON u.id=p.user_id WHERE u.email=?", [email]);
-  await pool.execute("DELETE FROM users WHERE email=?", [email]);
+  await pool.execute("DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE email=?)", [email]);
+await pool.execute("DELETE FROM users WHERE email=?", [email]);
   await pool.end();
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });

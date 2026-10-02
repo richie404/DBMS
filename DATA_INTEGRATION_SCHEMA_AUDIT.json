@@ -1,0 +1,423 @@
+{
+  "schema": [
+    {
+      "file": "001_create_users.sql",
+      "table": "users",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "002_create_sessions.sql",
+      "table": "sessions",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "003_create_password_reset_tokens.sql",
+      "table": "password_reset_tokens",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "004_create_user_preferences.sql",
+      "table": "user_preferences",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "005_create_properties.sql",
+      "table": "properties",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "006_create_property_images.sql",
+      "table": "property_images",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "007_create_amenities.sql",
+      "table": "amenities",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "008_create_property_amenities.sql",
+      "table": "property_amenities",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "009_create_favorites.sql",
+      "table": "favorites",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "010_create_bookings.sql",
+      "table": "bookings",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "011_create_booking_events.sql",
+      "table": "booking_events",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "012_create_conversations.sql",
+      "table": "conversations",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "013_create_messages.sql",
+      "table": "messages",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "014_create_notifications.sql",
+      "table": "notifications",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "015_create_payments.sql",
+      "table": "payments",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "016_create_activity_logs.sql",
+      "table": "activity_logs",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "017_create_platform_settings.sql",
+      "table": "platform_settings",
+      "missing": [],
+      "pass": true
+    },
+    {
+      "file": "018_add_admin_notification_preferences.sql",
+      "alter": true
+    }
+  ],
+  "relationships": [
+    {
+      "source": "activity_logs",
+      "col": "actor_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "bookings",
+      "col": "cancelled_by",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "bookings",
+      "col": "decision_by",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "bookings",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "bookings",
+      "col": "renter_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "booking_events",
+      "col": "actor_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "booking_events",
+      "col": "booking_id",
+      "target": "bookings",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "conversations",
+      "col": "owner_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "conversations",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "conversations",
+      "col": "renter_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "favorites",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "favorites",
+      "col": "user_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "messages",
+      "col": "conversation_id",
+      "target": "conversations",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "messages",
+      "col": "sender_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "notifications",
+      "col": "booking_id",
+      "target": "bookings",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "notifications",
+      "col": "conversation_id",
+      "target": "conversations",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "notifications",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "notifications",
+      "col": "user_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "password_reset_tokens",
+      "col": "user_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "payments",
+      "col": "booking_id",
+      "target": "bookings",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "payments",
+      "col": "payee_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "payments",
+      "col": "payer_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "platform_settings",
+      "col": "updated_by",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "properties",
+      "col": "owner_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "properties",
+      "col": "reviewed_by",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "property_amenities",
+      "col": "amenity_id",
+      "target": "amenities",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "property_amenities",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "property_images",
+      "col": "property_id",
+      "target": "properties",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "sessions",
+      "col": "user_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    },
+    {
+      "source": "user_preferences",
+      "col": "user_id",
+      "target": "users",
+      "targetCol": "id",
+      "orphans": 0
+    }
+  ],
+  "counts": {
+    "users": 25,
+    "properties": 36,
+    "bookings": 45,
+    "favorites": 56,
+    "conversations": 18,
+    "messages": 72,
+    "notifications": 153,
+    "payments": 9,
+    "activity_logs": 83
+  },
+  "optional": {
+    "avatarIds": [
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103
+    ],
+    "phoneIds": []
+  },
+  "incompleteDrafts": [],
+  "frontend": [
+    "VITE_API_BASE_URL=http://localhost:5000/api"
+  ],
+  "migrations": [
+    {
+      "migration_name": "001_create_users.sql"
+    },
+    {
+      "migration_name": "002_create_sessions.sql"
+    },
+    {
+      "migration_name": "003_create_password_reset_tokens.sql"
+    },
+    {
+      "migration_name": "004_create_user_preferences.sql"
+    },
+    {
+      "migration_name": "005_create_properties.sql"
+    },
+    {
+      "migration_name": "006_create_property_images.sql"
+    },
+    {
+      "migration_name": "007_create_amenities.sql"
+    },
+    {
+      "migration_name": "008_create_property_amenities.sql"
+    },
+    {
+      "migration_name": "009_create_favorites.sql"
+    },
+    {
+      "migration_name": "010_create_bookings.sql"
+    },
+    {
+      "migration_name": "011_create_booking_events.sql"
+    },
+    {
+      "migration_name": "012_create_conversations.sql"
+    },
+    {
+      "migration_name": "013_create_messages.sql"
+    },
+    {
+      "migration_name": "014_create_notifications.sql"
+    },
+    {
+      "migration_name": "015_create_payments.sql"
+    },
+    {
+      "migration_name": "016_create_activity_logs.sql"
+    },
+    {
+      "migration_name": "017_create_platform_settings.sql"
+    },
+    {
+      "migration_name": "018_add_admin_notification_preferences.sql"
+    }
+  ]
+}

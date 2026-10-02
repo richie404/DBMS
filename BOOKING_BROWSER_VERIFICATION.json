@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-02T13:45:57.419Z",
+  "checks": [
+    "Public direct property 26 has authoritative owner and real calendar",
+    "Future month navigation",
+    "390px mobile calendar without horizontal overflow",
+    "Calendar API failure shows error and retry",
+    "Authenticated two-month review calculates March 31 checkout with separate deposit and correct owner",
+    "Favorite property owner matches direct details",
+    "Database bookings display current listing owner",
+    "Browse uses database property IDs",
+    "Search result opens the same property 26 and owner",
+    "Chat with Owner opens actual owner conversation",
+    "Conversation ID survives refresh",
+    "Calendar loading state, real confirmed occupied dates with accessible disabled labels, and next free proposed period"
+  ],
+  "errors": []
+}

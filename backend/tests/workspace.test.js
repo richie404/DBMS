@@ -30,7 +30,8 @@ after(async()=>{
   for(const table of ['favorites','property_images','property_amenities'])await pool.execute(`DELETE FROM ${table} WHERE property_id=?`,[propertyId]);
   await pool.execute('DELETE FROM properties WHERE id=?',[propertyId]);
   for(const table of ['activity_logs','sessions','password_reset_tokens','user_preferences'])await pool.execute(`DELETE FROM ${table} WHERE ${table==='activity_logs'?'actor_id':'user_id'} IN (${placeholders})`,ids);
-  await pool.execute(`DELETE FROM users WHERE id IN (${placeholders})`,ids);
+  await pool.execute(`DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE id IN (${placeholders}))`, ids);
+await pool.execute(`DELETE FROM users WHERE id IN (${placeholders})`,ids);
  }finally{await pool.end();if(server)await new Promise(r=>server.close(r));}
 });
 test('new workspace endpoints reject anonymous and wrong-role access',async()=>{

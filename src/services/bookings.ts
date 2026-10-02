@@ -1,5 +1,11 @@
 import {apiRequest} from "../lib/api";
-import {queryString} from "./properties";
+const queryString = (filters?: Query) => {
+  const params = new URLSearchParams();
+  Object.entries(filters ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  });
+  return params.size ? `?${params}` : "";
+};
 import type {Booking, BookingPage, Query} from "../types/rentals";
 export type BookingScope = "renter" | "owner" | "admin";
 const base = (scope: BookingScope) => scope === "renter" ? "/bookings" : `/${scope}/bookings`;

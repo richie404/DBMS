@@ -1,3 +1,4 @@
+import {recordActivity} from "./activity.service.js";
 import pool from "../config/database.js";
 import env from "../config/env.js";
 import { createDefaultUserPreferences, createUser, findPasswordHashByUserId, findUserByEmail, findUserByUsername, findUserForLogin, findUserForPasswordReset, updatePasswordHash } from "../models/user.model.js";
@@ -32,6 +33,7 @@ export async function registerUser(input) {
     const passwordHash = await hashPassword(input.password);
     const user = await createUser(connection, { ...input, passwordHash });
     await createDefaultUserPreferences(connection, user.id);
+    await recordActivity(connection,user.id,"user.registered","user",user.id,"Account registered");
     await connection.commit();
     return user;
   } catch (error) {

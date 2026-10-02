@@ -74,6 +74,7 @@ export function propertyInput(body, creating = false) {
     else if (key === "currency") { assert(typeof value === "string" && /^[A-Z]{3}$/.test(value), 400, "Invalid currency"); fields[column] = value; }
     else fields[column] = text(value, key, key === "title" ? 200 : key === "description" ? 10000 : 255, true);
   }
+  if (fields.monthly_rent !== undefined && fields.monthly_rent !== null) assert(fields.monthly_rent > 0,400,"Monthly rent must be positive");
   if (creating) assert(fields.property_type, 400, "Property type is required");
   let images;
   if (body.images !== undefined) {

@@ -4,6 +4,12 @@ import type { AuthUser, ChangePasswordInput, ForgotPasswordInput, LoginInput, Re
 type UserResponse = { user: AuthUser };
 
 export const authService = {
+<<<<<<< Updated upstream
+=======
+  async updateProfile(input: Pick<AuthUser, "name" | "username" | "email" | "phone"> & {avatarUrl?:string}) {
+    return (await apiRequest<UserResponse>("/auth/profile", { method: "PATCH", body: input, csrf: true })).user;
+  },
+>>>>>>> Stashed changes
   async register(input: RegisterInput) {
     return (await apiRequest<UserResponse>("/auth/register", { method: "POST", body: input })).user;
   },

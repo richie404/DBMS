@@ -57,7 +57,8 @@ after(async()=>{
     for (const user of Object.values(users)) {
       await pool.execute("DELETE FROM sessions WHERE user_id=?",[user.id]);
       await pool.execute("DELETE FROM user_preferences WHERE user_id=?",[user.id]);
-      await pool.execute("DELETE FROM users WHERE id=? AND email=?",[user.id,user.email]);
+      await pool.execute("DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE id=? AND email=?)", [user.id,user.email]);
+await pool.execute("DELETE FROM users WHERE id=? AND email=?",[user.id,user.email]);
     }
   } finally {await pool.end(); if(server)await new Promise(resolve=>server.close(resolve));}
 });

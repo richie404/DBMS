@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-02T17:08:07.173Z",
+  "checks": [
+    "Authenticated real owner identity and database summary render",
+    "Add property, URL photos and primary selection persist with authenticated ownership and pending approval after refresh",
+    "Exact property edit persists after reload",
+    "Unpublished owner preview retains actual description/owner and shared availability calendar",
+    "Pending card count matches destination and filter survives refresh",
+    "Explicit booking approval persists and removes request from pending filter",
+    "Rejection with reason updates actual pending records",
+    "Owner inbox shows actual renter, reads incoming message and sends persisted reply",
+    "390px owner listings and form/calendar fit mobile viewport",
+    "Real profile name and avatar URL save and survive reload",
+    "Total Properties count covers both pages and page selection survives reload",
+    "Published accepting-requests card uses same criteria as listing destination",
+    "Listing filter survives View/Edit return and browser Back/Forward",
+    "Actual booking notification opens the linked real booking",
+    "Real logout clears owner-specific UI and opens public landing",
+    "Account switching clears owner state and direct foreign-property edit URL is rejected"
+  ],
+  "errors": []
+}

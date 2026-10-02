@@ -1,0 +1,323 @@
+{
+  "checks": [
+    {
+      "name": "Public landing shows database properties without invented totals",
+      "pass": true
+    },
+    {
+      "name": "Old About redirects to public landing",
+      "pass": true
+    },
+    {
+      "name": "Guest details retain description/owner and open one booking calendar",
+      "pass": true
+    },
+    {
+      "name": "Admin refresh keeps database totals",
+      "pass": true
+    },
+    {
+      "name": "User management renders existing database IDs with pagination",
+      "pass": true
+    },
+    {
+      "name": "Actual empty user filter has an honest empty state",
+      "pass": true
+    },
+    {
+      "name": "Pending listing destination matches dashboard count",
+      "pass": true
+    },
+    {
+      "name": "Active booking destination matches lifecycle count",
+      "pass": true
+    },
+    {
+      "name": "Payments show nine stored records and separate types",
+      "pass": true
+    },
+    {
+      "name": "Charts render actual dated daily buckets including zeros",
+      "pass": true
+    },
+    {
+      "name": "Activity log shows actual records",
+      "pass": true
+    },
+    {
+      "name": "Admin profile/preferences/configuration use real records",
+      "pass": true
+    },
+    {
+      "name": "Admin mobile layout fits 390px",
+      "pass": true
+    },
+    {
+      "name": "API failure shows Retry and suppresses all metrics",
+      "pass": true
+    },
+    {
+      "name": "Retry reloads actual data",
+      "pass": true
+    },
+    {
+      "name": "owner1 dashboard matches scoped SQL/API",
+      "pass": true
+    },
+    {
+      "name": "owner1 dashboard survives refresh",
+      "pass": true
+    },
+    {
+      "name": "owner1 scoped properties/favorites render",
+      "pass": true
+    },
+    {
+      "name": "owner2 dashboard matches scoped SQL/API",
+      "pass": true
+    },
+    {
+      "name": "owner2 dashboard survives refresh",
+      "pass": true
+    },
+    {
+      "name": "owner2 scoped properties/favorites render",
+      "pass": true
+    },
+    {
+      "name": "renter1 dashboard matches scoped SQL/API",
+      "pass": true
+    },
+    {
+      "name": "renter1 dashboard survives refresh",
+      "pass": true
+    },
+    {
+      "name": "renter1 scoped properties/favorites render",
+      "pass": true
+    },
+    {
+      "name": "renter2 dashboard matches scoped SQL/API",
+      "pass": true
+    },
+    {
+      "name": "renter2 dashboard survives refresh",
+      "pass": true
+    },
+    {
+      "name": "renter2 scoped properties/favorites render",
+      "pass": true
+    }
+  ],
+  "metrics": [
+    {
+      "account": 102,
+      "metric": "users",
+      "sql": 25,
+      "api": 25,
+      "pass": true,
+      "ui": 25
+    },
+    {
+      "account": 102,
+      "metric": "renters",
+      "sql": 15,
+      "api": 15,
+      "pass": true,
+      "ui": 15
+    },
+    {
+      "account": 102,
+      "metric": "owners",
+      "sql": 8,
+      "api": 8,
+      "pass": true,
+      "ui": 8
+    },
+    {
+      "account": 102,
+      "metric": "admins",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    },
+    {
+      "account": 102,
+      "metric": "listings",
+      "sql": 36,
+      "api": 36,
+      "pass": true,
+      "ui": 36
+    },
+    {
+      "account": 102,
+      "metric": "pendingListings",
+      "sql": 4,
+      "api": 4,
+      "pass": true,
+      "ui": 4
+    },
+    {
+      "account": 102,
+      "metric": "activeBookings",
+      "sql": 18,
+      "api": 18,
+      "pass": true,
+      "ui": 18
+    },
+    {
+      "account": 102,
+      "metric": "activityToday",
+      "sql": 38,
+      "api": 38,
+      "pass": true,
+      "ui": 38
+    },
+    {
+      "account": 94,
+      "metric": "totalProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true,
+      "ui": 5
+    },
+    {
+      "account": 94,
+      "metric": "availableProperties",
+      "sql": 4,
+      "api": 4,
+      "pass": true,
+      "ui": 4
+    },
+    {
+      "account": 94,
+      "metric": "pendingRequests",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    },
+    {
+      "account": 94,
+      "metric": "activeBookings",
+      "sql": 3,
+      "api": 3,
+      "pass": true,
+      "ui": 3
+    },
+    {
+      "account": 94,
+      "metric": "unreadMessages",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    },
+    {
+      "account": 95,
+      "metric": "totalProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true,
+      "ui": 5
+    },
+    {
+      "account": 95,
+      "metric": "availableProperties",
+      "sql": 4,
+      "api": 4,
+      "pass": true,
+      "ui": 4
+    },
+    {
+      "account": 95,
+      "metric": "pendingRequests",
+      "sql": 1,
+      "api": 1,
+      "pass": true,
+      "ui": 1
+    },
+    {
+      "account": 95,
+      "metric": "activeBookings",
+      "sql": 3,
+      "api": 3,
+      "pass": true,
+      "ui": 3
+    },
+    {
+      "account": 95,
+      "metric": "unreadMessages",
+      "sql": 3,
+      "api": 3,
+      "pass": true,
+      "ui": 3
+    },
+    {
+      "account": 79,
+      "metric": "savedProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true,
+      "ui": 5
+    },
+    {
+      "account": 79,
+      "metric": "activeBookings",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    },
+    {
+      "account": 79,
+      "metric": "pendingRequests",
+      "sql": 1,
+      "api": 1,
+      "pass": true,
+      "ui": 1
+    },
+    {
+      "account": 79,
+      "metric": "unreadMessages",
+      "sql": 0,
+      "api": 0,
+      "pass": true,
+      "ui": 0
+    },
+    {
+      "account": 80,
+      "metric": "savedProperties",
+      "sql": 1,
+      "api": 1,
+      "pass": true,
+      "ui": 1
+    },
+    {
+      "account": 80,
+      "metric": "activeBookings",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    },
+    {
+      "account": 80,
+      "metric": "pendingRequests",
+      "sql": 0,
+      "api": 0,
+      "pass": true,
+      "ui": 0
+    },
+    {
+      "account": 80,
+      "metric": "unreadMessages",
+      "sql": 2,
+      "api": 2,
+      "pass": true,
+      "ui": 2
+    }
+  ],
+  "errors": []
+}

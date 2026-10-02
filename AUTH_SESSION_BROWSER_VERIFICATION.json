@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-02T15:10:39.382Z",
+  "checks": [
+    "Fresh landing Browse Properties opens public database discovery",
+    "Direct guest URLs for all three roles and private account/security pages show login",
+    "Legacy hash protected URL is guarded",
+    "Renter Session and Security shows current backend session",
+    "Session server failure shows retry without declaring expiration",
+    "Current-session revocation clears current browser and synchronizes guest state across tabs",
+    "Public browse remains available after revocation",
+    "Owner blocked from renter dashboard",
+    "Account switching and admin-to-renter role guard",
+    "Back after logout does not expose private workspace",
+    "Guest favorite action returns to property 26 after login without submitting a booking",
+    "Backend-expired session clears shared state and shows protected login with expiration message",
+    "Guest browsing remains public after actual database expiration",
+    "Unsafe external login return rejected",
+    "Delayed successful session response cannot restore user after current-session revocation",
+    "Ordinary sidebar Logout invalidates cookie, returns Home, and Back cannot expose private workspace"
+  ],
+  "errors": []
+}

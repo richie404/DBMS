@@ -683,40 +683,6 @@ h3 { font-size: 15px; letter-spacing: -.3px; }
 .public-footer > div > strong { font-size: 11px; margin-bottom: 4px; }
 .public-footer button { padding: 0; }
 .copyright { grid-column: 1/-1; color: var(--muted); font-size: 9px; padding-top: 26px; border-top: 1px solid var(--line); margin: 20px 0 0; }
-.about-hero { max-width: 1320px; min-height: 610px; margin: auto; padding: 70px 5vw 90px; display: grid; grid-template-columns: 1fr .85fr; gap: 8vw; align-items: center; }
-.about-hero-copy h1 { font-size: clamp(48px,6vw,76px); line-height: 1.02; letter-spacing: -3.5px; }
-.about-hero-copy > p:not(.eyebrow) { max-width: 590px; margin: 24px 0 30px; color: var(--muted); font-size: 15px; line-height: 1.75; }
-.about-hero-art { min-height: 430px; position: relative; display: flex; align-items: center; justify-content: center; }
-.about-home-card { width: 82%; position: relative; z-index: 2; overflow: hidden; border: 8px solid white; border-radius: 150px 150px 18px 18px; background: white; box-shadow: 0 24px 65px rgba(45,20,31,.14); }
-.about-home-card img { width: 100%; height: 330px; display: block; object-fit: cover; }
-.about-home-card > div { padding: 18px 20px; display: grid; gap: 6px; }
-.about-home-card strong { margin-top: 3px; font-size: 13px; }.about-home-card small { color: var(--muted); font-size: 9px; }
-.about-orbit { position: absolute; border: 1px solid #d9c3cc; border-radius: 50%; }
-.orbit-one { width: 410px; height: 410px; }.orbit-two { width: 495px; height: 495px; border-style: dashed; opacity: .65; }
-.mission-section { background: var(--canvas); padding: 95px 5vw; }
-.about-section-heading { max-width: 650px; margin: 0 auto 42px; text-align: center; }
-.about-section-heading h2, .story-intro h2, .about-cta h2 { font-size: clamp(30px,3.8vw,46px); line-height: 1.14; letter-spacing: -1.8px; }
-.about-section-heading > p:last-child { color: var(--muted); font-size: 11px; line-height: 1.7; }
-.mission-grid { max-width: 1120px; margin: auto; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
-.mission-grid article { min-height: 245px; position: relative; padding: 28px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-.mission-grid article > small { position: absolute; right: 22px; top: 22px; color: #d9c3cc; font-size: 20px; font-weight: 700; }
-.mission-grid article > span { width: 48px; height: 48px; margin-bottom: 45px; display: flex; align-items: center; justify-content: center; border-radius: 13px; background: var(--brand-2); color: var(--brand); }
-.mission-grid h3 { font-size: 16px; }.mission-grid p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.7; }
-.story-section { max-width: 1180px; margin: auto; padding: 110px 5vw; display: grid; grid-template-columns: .9fr 1.1fr; gap: 9vw; }
-.story-intro > p:last-child { color: var(--muted); font-size: 12px; line-height: 1.8; }
-.story-timeline { position: relative; }
-.story-timeline::before { content: ''; position: absolute; left: 17px; top: 20px; bottom: 30px; width: 1px; background: #d9c3cc; }
-.story-timeline article { position: relative; z-index: 1; display: grid; grid-template-columns: 36px 1fr; gap: 19px; margin-bottom: 34px; }
-.story-timeline article > span { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--brand); color: white; border: 5px solid white; font-size: 9px; font-weight: 700; }
-.story-timeline article div { padding-top: 6px; }.story-timeline h3 { margin-bottom: 8px; }.story-timeline p { color: var(--muted); font-size: 10px; line-height: 1.75; }
-.team-section { padding: 95px 5vw; background: var(--canvas); }
-.team-grid { max-width: 1020px; margin: auto; display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
-.team-grid article { overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
-.team-grid img { width: 100%; height: 300px; object-fit: cover; object-position: center 25%; filter: saturate(.85); }
-.team-grid article > div { padding: 18px; }.team-grid h3 { margin: 0 0 5px; font-size: 14px; }.team-grid p { margin: 0; color: var(--muted); font-size: 9px; }
-.about-cta { max-width: 1180px; margin: 90px auto; padding: 48px 52px; border-radius: 18px; background: var(--brand); color: white; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
-.about-cta .eyebrow { color: #e6d5e9; }.about-cta h2 { max-width: 660px; margin: 0; }
-.about-cta > div:last-child { display: flex; gap: 9px; flex: 0 0 auto; }.about-cta .button-secondary { border-color: rgba(255,255,255,.28); background: transparent; color: white; }.about-cta .button-primary { background: white; color: var(--brand); }
 .browse-page { background: var(--canvas); }
 .browse-hero { max-width: 1440px; margin: auto; padding: 64px 5vw 42px; }
 .browse-hero > div:first-child { text-align: center; }
@@ -1172,8 +1138,6 @@ h3 { font-size: 15px; letter-spacing: -.3px; }
   .browse-property-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .detail-layout { grid-template-columns: minmax(0,1fr) 300px; gap: 28px; }
   .detail-stats { grid-template-columns: repeat(2,1fr); }
-  .about-hero { gap: 4vw; }
-  .about-home-card { width: 90%; }
   .booking-info-grid { grid-template-columns: repeat(3,1fr); }
   .owner-summary { grid-template-columns: repeat(2,1fr); }
   .owner-dashboard-grid { grid-template-columns: 1fr; }
@@ -1308,11 +1272,6 @@ h3 { font-size: 15px; letter-spacing: -.3px; }
   .edit-form-grid { grid-template-columns: 1fr 1fr; }
   .edit-amenities { grid-template-columns: repeat(3,1fr); }
   .edit-photo-grid { grid-template-columns: 1fr 1fr; }
-  .about-hero { grid-template-columns: 1fr; padding-top: 70px; }
-  .about-hero-art { min-height: 500px; }
-  .about-home-card { width: min(440px,78%); }
-  .story-section { grid-template-columns: 1fr; gap: 45px; }
-  .about-cta { margin-inline: 20px; padding: 38px; align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 767px) {
   .mobile-top { padding-inline: 14px; }
@@ -1400,19 +1359,6 @@ h3 { font-size: 15px; letter-spacing: -.3px; }
   .unavailable-banner { align-items: flex-start; flex-wrap: wrap; }
   .unavailable-banner .button { width: 100%; }
   .detail-skeleton-hero { height: 330px; }
-  .about-hero { padding: 55px 20px 70px; }
-  .about-hero-copy h1 { font-size: 48px; letter-spacing: -2.5px; }
-  .about-hero-art { min-height: 400px; }
-  .about-home-card { width: 90%; }
-  .about-home-card img { height: 255px; }
-  .orbit-one { width: 320px; height: 320px; }.orbit-two { width: 375px; height: 375px; }
-  .mission-section, .team-section { padding: 70px 20px; }
-  .mission-grid, .team-grid { grid-template-columns: 1fr; }
-  .mission-grid article { min-height: 220px; }
-  .story-section { padding: 80px 20px; }
-  .team-grid img { height: 340px; }
-  .about-cta { padding: 32px 24px; }
-  .about-cta > div:last-child { width: 100%; flex-direction: column; }
   .registration-page { padding: 72px 14px 24px; align-items: flex-start; overflow: auto; }
   .registration-card { padding: 27px 20px; }
   .registration-heading h1 { font-size: 28px; }

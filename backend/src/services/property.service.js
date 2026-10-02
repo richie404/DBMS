@@ -20,6 +20,10 @@ export async function saveProperty(ownerId, propertyId, input) {
     const substantive = Object.keys(fields).some(key => !["is_available", "available_from", "moderation_status"].includes(key)) || input.images !== undefined || input.amenityIds !== undefined;
     if (existing?.moderation_status === "approved" && substantive) fields.moderation_status = fields.moderation_status ?? "pending";
     const merged = {...existing, ...fields};
+    if (propertyId && fields.available_from && fields.available_from !== existing.available_date) {
+      const [[reserved]] = await db.execute("SELECT id FROM bookings WHERE property_id=? AND deleted_at IS NULL AND status IN ('approved','confirmed') AND end_date>CURRENT_DATE AND start_date<? LIMIT 1 FOR UPDATE",[propertyId,fields.available_from]);
+      assert(!reserved,409,"Earliest move-in cannot exclude an existing reservation. Keep the date or resolve the reservation first.");
+    }
     if (merged.moderation_status === "pending") publishable(merged);
     if (input.amenityIds?.length) {
       const [rows] = await db.execute(`SELECT id FROM amenities WHERE id IN (${input.amenityIds.map(() => "?").join(",")})`, input.amenityIds);

@@ -1,0 +1,860 @@
+{
+  "metrics": [
+    {
+      "account": 102,
+      "metric": "users",
+      "sql": 25,
+      "api": 25,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "renters",
+      "sql": 15,
+      "api": 15,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "owners",
+      "sql": 8,
+      "api": 8,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "admins",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "listings",
+      "sql": 36,
+      "api": 36,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "pendingListings",
+      "sql": 4,
+      "api": 4,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "activeBookings",
+      "sql": 18,
+      "api": 18,
+      "pass": true
+    },
+    {
+      "account": 102,
+      "metric": "activityToday",
+      "sql": 38,
+      "api": 38,
+      "pass": true
+    },
+    {
+      "account": 94,
+      "metric": "totalProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true
+    },
+    {
+      "account": 94,
+      "metric": "availableProperties",
+      "sql": 4,
+      "api": 4,
+      "pass": true
+    },
+    {
+      "account": 94,
+      "metric": "pendingRequests",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 94,
+      "metric": "activeBookings",
+      "sql": 3,
+      "api": 3,
+      "pass": true
+    },
+    {
+      "account": 94,
+      "metric": "unreadMessages",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 95,
+      "metric": "totalProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true
+    },
+    {
+      "account": 95,
+      "metric": "availableProperties",
+      "sql": 4,
+      "api": 4,
+      "pass": true
+    },
+    {
+      "account": 95,
+      "metric": "pendingRequests",
+      "sql": 1,
+      "api": 1,
+      "pass": true
+    },
+    {
+      "account": 95,
+      "metric": "activeBookings",
+      "sql": 3,
+      "api": 3,
+      "pass": true
+    },
+    {
+      "account": 95,
+      "metric": "unreadMessages",
+      "sql": 3,
+      "api": 3,
+      "pass": true
+    },
+    {
+      "account": 79,
+      "metric": "savedProperties",
+      "sql": 5,
+      "api": 5,
+      "pass": true
+    },
+    {
+      "account": 79,
+      "metric": "activeBookings",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 79,
+      "metric": "pendingRequests",
+      "sql": 1,
+      "api": 1,
+      "pass": true
+    },
+    {
+      "account": 79,
+      "metric": "unreadMessages",
+      "sql": 0,
+      "api": 0,
+      "pass": true
+    },
+    {
+      "account": 79,
+      "metric": "unreadConversations",
+      "sql": 0,
+      "api": 0,
+      "pass": true
+    },
+    {
+      "account": 80,
+      "metric": "savedProperties",
+      "sql": 1,
+      "api": 1,
+      "pass": true
+    },
+    {
+      "account": 80,
+      "metric": "activeBookings",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 80,
+      "metric": "pendingRequests",
+      "sql": 0,
+      "api": 0,
+      "pass": true
+    },
+    {
+      "account": 80,
+      "metric": "unreadMessages",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    },
+    {
+      "account": 80,
+      "metric": "unreadConversations",
+      "sql": 2,
+      "api": 2,
+      "pass": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "Analytics users matches SQL buckets",
+      "pass": true
+    },
+    {
+      "name": "Analytics listings matches SQL buckets",
+      "pass": true
+    },
+    {
+      "name": "Analytics bookings matches SQL buckets",
+      "pass": true
+    },
+    {
+      "name": "Analytics revenue matches SQL buckets",
+      "pass": true
+    },
+    {
+      "name": "/admin/users matches SQL IDs",
+      "pass": true,
+      "count": 25
+    },
+    {
+      "name": "/admin/properties matches SQL IDs",
+      "pass": true,
+      "count": 36
+    },
+    {
+      "name": "/bookings matches SQL IDs",
+      "pass": true,
+      "count": 45
+    },
+    {
+      "name": "/admin/payments matches SQL IDs",
+      "pass": true,
+      "count": 9
+    },
+    {
+      "name": "/admin/activity matches SQL IDs",
+      "pass": true,
+      "count": 83
+    },
+    {
+      "name": "owner1 booking ownership",
+      "pass": true,
+      "count": 7
+    },
+    {
+      "name": "owner1 property ownership",
+      "pass": true,
+      "count": 5
+    },
+    {
+      "name": "owner1 private conversations",
+      "pass": true,
+      "count": 3
+    },
+    {
+      "name": "owner2 booking ownership",
+      "pass": true,
+      "count": 7
+    },
+    {
+      "name": "owner2 property ownership",
+      "pass": true,
+      "count": 5
+    },
+    {
+      "name": "owner2 private conversations",
+      "pass": true,
+      "count": 3
+    },
+    {
+      "name": "renter1 booking ownership",
+      "pass": true,
+      "count": 3
+    },
+    {
+      "name": "renter1 private conversations",
+      "pass": true,
+      "count": 2
+    },
+    {
+      "name": "renter2 booking ownership",
+      "pass": true,
+      "count": 3
+    },
+    {
+      "name": "renter2 private conversations",
+      "pass": true,
+      "count": 2
+    }
+  ],
+  "orphans": [
+    {
+      "table": "properties",
+      "column": "owner_id",
+      "ids": []
+    },
+    {
+      "table": "bookings",
+      "column": "property_id",
+      "ids": []
+    },
+    {
+      "table": "bookings",
+      "column": "renter_id",
+      "ids": []
+    },
+    {
+      "table": "favorites",
+      "column": "property_id",
+      "ids": []
+    },
+    {
+      "table": "favorites",
+      "column": "user_id",
+      "ids": []
+    },
+    {
+      "table": "conversations",
+      "column": "property_id",
+      "ids": []
+    },
+    {
+      "table": "conversations",
+      "column": "owner_id",
+      "ids": []
+    },
+    {
+      "table": "conversations",
+      "column": "renter_id",
+      "ids": []
+    },
+    {
+      "table": "messages",
+      "column": "conversation_id",
+      "ids": []
+    },
+    {
+      "table": "messages",
+      "column": "sender_id",
+      "ids": []
+    },
+    {
+      "table": "notifications",
+      "column": "user_id",
+      "ids": []
+    },
+    {
+      "table": "notifications",
+      "column": "property_id",
+      "ids": []
+    },
+    {
+      "table": "notifications",
+      "column": "booking_id",
+      "ids": []
+    },
+    {
+      "table": "notifications",
+      "column": "conversation_id",
+      "ids": []
+    },
+    {
+      "table": "payments",
+      "column": "booking_id",
+      "ids": []
+    },
+    {
+      "table": "payments",
+      "column": "payer_id",
+      "ids": []
+    },
+    {
+      "table": "payments",
+      "column": "payee_id",
+      "ids": []
+    },
+    {
+      "table": "activity_logs",
+      "column": "actor_id",
+      "ids": []
+    }
+  ],
+  "missing": [
+    {
+      "kind": "incomplete published properties",
+      "records": []
+    },
+    {
+      "kind": "optional fields absent",
+      "users": [
+        {
+          "id": 79
+        },
+        {
+          "id": 80
+        },
+        {
+          "id": 81
+        },
+        {
+          "id": 82
+        },
+        {
+          "id": 83
+        },
+        {
+          "id": 84
+        },
+        {
+          "id": 85
+        },
+        {
+          "id": 86
+        },
+        {
+          "id": 87
+        },
+        {
+          "id": 88
+        },
+        {
+          "id": 89
+        },
+        {
+          "id": 90
+        },
+        {
+          "id": 91
+        },
+        {
+          "id": 92
+        },
+        {
+          "id": 93
+        },
+        {
+          "id": 94
+        },
+        {
+          "id": 95
+        },
+        {
+          "id": 96
+        },
+        {
+          "id": 97
+        },
+        {
+          "id": 98
+        },
+        {
+          "id": 99
+        },
+        {
+          "id": 100
+        },
+        {
+          "id": 101
+        },
+        {
+          "id": 102
+        },
+        {
+          "id": 103
+        }
+      ],
+      "payments": []
+    }
+  ],
+  "source": {
+    "databaseName": "rentnest",
+    "databaseTimezone": "Asia/Dhaka",
+    "sessionTimezone": "SYSTEM"
+  },
+  "overview": {
+    "counts": {
+      "users": 25,
+      "renters": 15,
+      "owners": 8,
+      "admins": 2,
+      "listings": 36,
+      "pendingListings": 4,
+      "activeBookings": 18,
+      "activityToday": 38
+    },
+    "items": [
+      {
+        "id": 165,
+        "action": "profile.updated",
+        "targetType": "user",
+        "targetId": 79,
+        "outcome": "success",
+        "description": "Account profile updated",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T01:09:35.000Z",
+        "actorName": "Ayesha Rahman",
+        "actorRole": "renter"
+      },
+      {
+        "id": 164,
+        "action": "profile.updated",
+        "targetType": "user",
+        "targetId": 79,
+        "outcome": "success",
+        "description": "Account profile updated",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T01:09:33.000Z",
+        "actorName": "Ayesha Rahman",
+        "actorRole": "renter"
+      },
+      {
+        "id": 81,
+        "action": "demo.listing.seeded",
+        "targetType": "property",
+        "targetId": 61,
+        "outcome": "success",
+        "description": "Demo listing: Mirpur parking — Demo 36",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T00:29:50.000Z",
+        "actorName": "Nafisa Ahmed",
+        "actorRole": "admin"
+      },
+      {
+        "id": 80,
+        "action": "demo.listing.seeded",
+        "targetType": "property",
+        "targetId": 60,
+        "outcome": "warning",
+        "description": "Demo listing: Bashundhara office — Demo 35",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T00:29:50.000Z",
+        "actorName": "Nafisa Ahmed",
+        "actorRole": "admin"
+      },
+      {
+        "id": 79,
+        "action": "demo.listing.seeded",
+        "targetType": "property",
+        "targetId": 59,
+        "outcome": "warning",
+        "description": "Demo listing: Uttara room — Demo 34",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T00:29:50.000Z",
+        "actorName": "Nafisa Ahmed",
+        "actorRole": "admin"
+      },
+      {
+        "id": 78,
+        "action": "demo.listing.seeded",
+        "targetType": "property",
+        "targetId": 58,
+        "outcome": "success",
+        "description": "Demo listing: Dhanmondi studio — Demo 33",
+        "sourceIp": null,
+        "createdAt": "2026-10-02T00:29:50.000Z",
+        "actorName": "Nafisa Ahmed",
+        "actorRole": "admin"
+      }
+    ],
+    "hourly": [
+      {
+        "hour": 0,
+        "count": 0
+      },
+      {
+        "hour": 1,
+        "count": 0
+      },
+      {
+        "hour": 2,
+        "count": 0
+      },
+      {
+        "hour": 3,
+        "count": 0
+      },
+      {
+        "hour": 4,
+        "count": 0
+      },
+      {
+        "hour": 5,
+        "count": 0
+      },
+      {
+        "hour": 6,
+        "count": 36
+      },
+      {
+        "hour": 7,
+        "count": 2
+      },
+      {
+        "hour": 8,
+        "count": 0
+      },
+      {
+        "hour": 9,
+        "count": 0
+      },
+      {
+        "hour": 10,
+        "count": 0
+      },
+      {
+        "hour": 11,
+        "count": 0
+      },
+      {
+        "hour": 12,
+        "count": 0
+      },
+      {
+        "hour": 13,
+        "count": 0
+      },
+      {
+        "hour": 14,
+        "count": 0
+      },
+      {
+        "hour": 15,
+        "count": 0
+      },
+      {
+        "hour": 16,
+        "count": 0
+      },
+      {
+        "hour": 17,
+        "count": 0
+      },
+      {
+        "hour": 18,
+        "count": 0
+      },
+      {
+        "hour": 19,
+        "count": 0
+      },
+      {
+        "hour": 20,
+        "count": 0
+      },
+      {
+        "hour": 21,
+        "count": 0
+      },
+      {
+        "hour": 22,
+        "count": 0
+      },
+      {
+        "hour": 23,
+        "count": 0
+      }
+    ],
+    "timezone": "Asia/Dhaka",
+    "day": "2026-10-02",
+    "policy": "Non-deleted users (all statuses), non-deleted listings (all moderation states); active bookings are approved/confirmed with an end date after today. Activity includes recorded events only."
+  },
+  "analytics": {
+    "series": {
+      "users": [
+        {
+          "day": "2026-10-01",
+          "value": 0
+        },
+        {
+          "day": "2026-10-02",
+          "value": 25
+        }
+      ],
+      "listings": [
+        {
+          "day": "2026-10-01",
+          "value": 0
+        },
+        {
+          "day": "2026-10-02",
+          "value": 0
+        }
+      ],
+      "bookings": [
+        {
+          "day": "2026-10-01",
+          "value": 0
+        },
+        {
+          "day": "2026-10-02",
+          "value": 0
+        }
+      ],
+      "revenue": [
+        {
+          "day": "2026-10-01",
+          "value": 0
+        },
+        {
+          "day": "2026-10-02",
+          "value": 0
+        }
+      ]
+    },
+    "start": "2026-10-01",
+    "end": "2026-10-02",
+    "timezone": "Asia/Dhaka",
+    "currency": "BDT"
+  },
+  "owner1": {
+    "id": 94,
+    "summary": {
+      "counts": {
+        "totalProperties": 5,
+        "availableProperties": 4,
+        "pendingRequests": 2,
+        "activeBookings": 3,
+        "unreadMessages": 2
+      },
+      "payments": []
+    }
+  },
+  "owner2": {
+    "id": 95,
+    "summary": {
+      "counts": {
+        "totalProperties": 5,
+        "availableProperties": 4,
+        "pendingRequests": 1,
+        "activeBookings": 3,
+        "unreadMessages": 3
+      },
+      "payments": []
+    }
+  },
+  "renter1": {
+    "id": 79,
+    "summary": {
+      "summary": {
+        "savedProperties": 5,
+        "activeBookings": 2,
+        "pendingRequests": 1,
+        "unreadMessages": 0,
+        "unreadConversations": 0,
+        "latestUnreadConversationId": null
+      }
+    }
+  },
+  "renter2": {
+    "id": 80,
+    "summary": {
+      "summary": {
+        "savedProperties": 1,
+        "activeBookings": 2,
+        "pendingRequests": 0,
+        "unreadMessages": 2,
+        "unreadConversations": 2,
+        "latestUnreadConversationId": 17
+      }
+    }
+  },
+  "ambiguous": {
+    "conversationListingOwnerChanged": [],
+    "invalidMessageMembership": []
+  },
+  "migrations": [
+    {
+      "id": 1,
+      "migration_name": "001_create_users.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 2,
+      "migration_name": "002_create_sessions.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 3,
+      "migration_name": "003_create_password_reset_tokens.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 4,
+      "migration_name": "004_create_user_preferences.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 5,
+      "migration_name": "005_create_properties.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 6,
+      "migration_name": "006_create_property_images.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 7,
+      "migration_name": "007_create_amenities.sql",
+      "executed_at": "2026-10-01T22:57:13.000Z"
+    },
+    {
+      "id": 8,
+      "migration_name": "008_create_property_amenities.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 9,
+      "migration_name": "009_create_favorites.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 10,
+      "migration_name": "010_create_bookings.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 11,
+      "migration_name": "011_create_booking_events.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 12,
+      "migration_name": "012_create_conversations.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 13,
+      "migration_name": "013_create_messages.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 14,
+      "migration_name": "014_create_notifications.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 15,
+      "migration_name": "015_create_payments.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 16,
+      "migration_name": "016_create_activity_logs.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 17,
+      "migration_name": "017_create_platform_settings.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    },
+    {
+      "id": 18,
+      "migration_name": "018_add_admin_notification_preferences.sql",
+      "executed_at": "2026-10-01T22:57:14.000Z"
+    }
+  ]
+}

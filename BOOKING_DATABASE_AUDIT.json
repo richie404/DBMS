@@ -1,0 +1,448 @@
+{
+  "inspectedAt": "2026-10-02T13:45:21.501Z",
+  "owners": [
+    {
+      "id": 26,
+      "title": "Gulshan apartment — Demo 01",
+      "location": "Gulshan, Dhaka",
+      "owner_id": 94,
+      "ownerName": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 27,
+      "title": "Banani flat — Demo 02",
+      "location": "Banani, Dhaka",
+      "owner_id": 95,
+      "ownerName": "Shamima Begum",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 28,
+      "title": "Dhanmondi studio — Demo 03",
+      "location": "Dhanmondi, Dhaka",
+      "owner_id": 96,
+      "ownerName": "Kamal Uddin",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 29,
+      "title": "Uttara room — Demo 04",
+      "location": "Uttara, Dhaka",
+      "owner_id": 97,
+      "ownerName": "Nadia Karim",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 30,
+      "title": "Bashundhara office — Demo 05",
+      "location": "Bashundhara, Dhaka",
+      "owner_id": 98,
+      "ownerName": "Masud Rana",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 31,
+      "title": "Mirpur parking — Demo 06",
+      "location": "Mirpur, Dhaka",
+      "owner_id": 99,
+      "ownerName": "Fahmida Akter",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 32,
+      "title": "Mohammadpur apartment — Demo 07",
+      "location": "Mohammadpur, Dhaka",
+      "owner_id": 100,
+      "ownerName": "Anisul Haque",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 33,
+      "title": "Badda flat — Demo 08",
+      "location": "Badda, Dhaka",
+      "owner_id": 101,
+      "ownerName": "Salma Rahman",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 34,
+      "title": "Farmgate studio — Demo 09",
+      "location": "Farmgate, Dhaka",
+      "owner_id": 94,
+      "ownerName": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 35,
+      "title": "Motijheel room — Demo 10",
+      "location": "Motijheel, Dhaka",
+      "owner_id": 95,
+      "ownerName": "Shamima Begum",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 36,
+      "title": "Gulshan office — Demo 11",
+      "location": "Gulshan, Dhaka",
+      "owner_id": 96,
+      "ownerName": "Kamal Uddin",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 37,
+      "title": "Banani parking — Demo 12",
+      "location": "Banani, Dhaka",
+      "owner_id": 97,
+      "ownerName": "Nadia Karim",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 38,
+      "title": "Dhanmondi apartment — Demo 13",
+      "location": "Dhanmondi, Dhaka",
+      "owner_id": 98,
+      "ownerName": "Masud Rana",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 39,
+      "title": "Uttara flat — Demo 14",
+      "location": "Uttara, Dhaka",
+      "owner_id": 99,
+      "ownerName": "Fahmida Akter",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 40,
+      "title": "Bashundhara studio — Demo 15",
+      "location": "Bashundhara, Dhaka",
+      "owner_id": 100,
+      "ownerName": "Anisul Haque",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 41,
+      "title": "Mirpur room — Demo 16",
+      "location": "Mirpur, Dhaka",
+      "owner_id": 101,
+      "ownerName": "Salma Rahman",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 42,
+      "title": "Mohammadpur office — Demo 17",
+      "location": "Mohammadpur, Dhaka",
+      "owner_id": 94,
+      "ownerName": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 43,
+      "title": "Badda parking — Demo 18",
+      "location": "Badda, Dhaka",
+      "owner_id": 95,
+      "ownerName": "Shamima Begum",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 44,
+      "title": "Farmgate apartment — Demo 19",
+      "location": "Farmgate, Dhaka",
+      "owner_id": 96,
+      "ownerName": "Kamal Uddin",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 45,
+      "title": "Motijheel flat — Demo 20",
+      "location": "Motijheel, Dhaka",
+      "owner_id": 97,
+      "ownerName": "Nadia Karim",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 46,
+      "title": "Gulshan studio — Demo 21",
+      "location": "Gulshan, Dhaka",
+      "owner_id": 98,
+      "ownerName": "Masud Rana",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 47,
+      "title": "Banani room — Demo 22",
+      "location": "Banani, Dhaka",
+      "owner_id": 99,
+      "ownerName": "Fahmida Akter",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 48,
+      "title": "Dhanmondi office — Demo 23",
+      "location": "Dhanmondi, Dhaka",
+      "owner_id": 100,
+      "ownerName": "Anisul Haque",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 49,
+      "title": "Uttara parking — Demo 24",
+      "location": "Uttara, Dhaka",
+      "owner_id": 101,
+      "ownerName": "Salma Rahman",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 50,
+      "title": "Bashundhara apartment — Demo 25",
+      "location": "Bashundhara, Dhaka",
+      "owner_id": 94,
+      "ownerName": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 51,
+      "title": "Mirpur flat — Demo 26",
+      "location": "Mirpur, Dhaka",
+      "owner_id": 95,
+      "ownerName": "Shamima Begum",
+      "role": "owner",
+      "status": "active",
+      "is_available": 1,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 52,
+      "title": "Mohammadpur studio — Demo 27",
+      "location": "Mohammadpur, Dhaka",
+      "owner_id": 96,
+      "ownerName": "Kamal Uddin",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 53,
+      "title": "Badda room — Demo 28",
+      "location": "Badda, Dhaka",
+      "owner_id": 97,
+      "ownerName": "Nadia Karim",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 54,
+      "title": "Farmgate office — Demo 29",
+      "location": "Farmgate, Dhaka",
+      "owner_id": 98,
+      "ownerName": "Masud Rana",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "approved"
+    },
+    {
+      "id": 55,
+      "title": "Motijheel parking — Demo 30",
+      "location": "Motijheel, Dhaka",
+      "owner_id": 99,
+      "ownerName": "Fahmida Akter",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "pending"
+    },
+    {
+      "id": 56,
+      "title": "Gulshan apartment — Demo 31",
+      "location": "Gulshan, Dhaka",
+      "owner_id": 100,
+      "ownerName": "Anisul Haque",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "pending"
+    },
+    {
+      "id": 57,
+      "title": "Banani flat — Demo 32",
+      "location": "Banani, Dhaka",
+      "owner_id": 101,
+      "ownerName": "Salma Rahman",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "pending"
+    },
+    {
+      "id": 58,
+      "title": "Dhanmondi studio — Demo 33",
+      "location": "Dhanmondi, Dhaka",
+      "owner_id": 94,
+      "ownerName": "Rezaul Chowdhury",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "pending"
+    },
+    {
+      "id": 59,
+      "title": "Uttara room — Demo 34",
+      "location": "Uttara, Dhaka",
+      "owner_id": 95,
+      "ownerName": "Shamima Begum",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "rejected"
+    },
+    {
+      "id": 60,
+      "title": "Bashundhara office — Demo 35",
+      "location": "Bashundhara, Dhaka",
+      "owner_id": 96,
+      "ownerName": "Kamal Uddin",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "rejected"
+    },
+    {
+      "id": 61,
+      "title": "Mirpur parking — Demo 36",
+      "location": "Mirpur, Dhaka",
+      "owner_id": 97,
+      "ownerName": "Nadia Karim",
+      "role": "owner",
+      "status": "active",
+      "is_available": 0,
+      "moderation_status": "draft"
+    }
+  ],
+  "duplicateTitles": [],
+  "sharedPhotos": [
+    {
+      "image_path": "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1000&q=80",
+      "propertyIds": "27,28,29,31,32,33,34,36,37,39,40,41,43,44,45,46,48,49,51,52,53,55,56,57,58,60,61",
+      "owners": 8
+    },
+    {
+      "image_path": "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+      "propertyIds": "27,28,30,31,32,34,35,36,37,39,40,42,43,44,46,47,48,49,51,52,54,55,56,58,59,60,61",
+      "owners": 8
+    },
+    {
+      "image_path": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+      "propertyIds": "26,28,29,30,31,33,34,36,37,38,40,41,42,43,45,46,48,49,50,52,53,54,55,57,58,60,61",
+      "owners": 8
+    },
+    {
+      "image_path": "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
+      "propertyIds": "26,27,28,30,31,33,34,35,37,38,39,40,42,43,45,46,47,49,50,51,52,54,55,57,58,59,61",
+      "owners": 8
+    }
+  ],
+  "historicalConversations": [],
+  "reservationConflicts": [],
+  "statuses": [
+    {
+      "status": "pending",
+      "count": 9
+    },
+    {
+      "status": "approved",
+      "count": 9
+    },
+    {
+      "status": "confirmed",
+      "count": 9
+    },
+    {
+      "status": "rejected",
+      "count": 9
+    },
+    {
+      "status": "cancelled",
+      "count": 9
+    }
+  ]
+}
