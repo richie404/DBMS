@@ -11,6 +11,7 @@ type AuthContextValue = {
   refreshUser: () => Promise<void>;
   setAuthenticatedUser: (user: AuthUser) => void;
   clearAuthenticatedUser: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -19,59 +20,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const authRevision = useRef(0);
+  const revision = useRef(0);
 
   const clearAuthenticatedUser = useCallback(() => {
-    authRevision.current += 1;
+    revision.current++;
     clearCsrfToken();
     setUser(null);
-    setError(null);
-    setIsLoading(false);
   }, []);
 
   const setAuthenticatedUser = useCallback((authenticatedUser: AuthUser) => {
-    authRevision.current += 1;
+    revision.current++;
     clearCsrfToken();
     setError(null);
     setUser(authenticatedUser);
-    setIsLoading(false);
   }, []);
 
   const refreshUser = useCallback(async () => {
-    const revision = ++authRevision.current;
-    setIsLoading(true);
+    const currentRevision = revision.current;
     try {
       const restoredUser = await authService.getCurrentUser();
-      if (revision !== authRevision.current) return;
-      clearCsrfToken();
-      setUser(restoredUser);
-      setError(null);
+      if (revision.current === currentRevision) setAuthenticatedUser(restoredUser);
     } catch (caughtError) {
-      if (revision !== authRevision.current) return;
-      clearCsrfToken();
-      setUser(null);
-      if (caughtError instanceof ApiError && (caughtError.status === 401 || caughtError.status === 403)) {
+      if (revision.current !== currentRevision) return;
+      clearAuthenticatedUser();
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
         setError(null);
       } else {
         setError(caughtError instanceof Error ? caughtError : new Error("Unable to restore the current session."));
       }
     } finally {
-      if (revision === authRevision.current) setIsLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, [clearAuthenticatedUser, setAuthenticatedUser]);
 
+  useEffect(() => { void refreshUser(); }, [refreshUser]);
   useEffect(() => {
-    void refreshUser();
-    const sessionEnded = () => clearAuthenticatedUser();
-    const restoreOnFocus = () => { void refreshUser(); };
-    window.addEventListener("rentnest:session-ended", sessionEnded);
-    window.addEventListener("focus", restoreOnFocus);
-    return () => {
-      authRevision.current += 1;
-      window.removeEventListener("rentnest:session-ended", sessionEnded);
-      window.removeEventListener("focus", restoreOnFocus);
-    };
-  }, [refreshUser, clearAuthenticatedUser]);
+    const expire = () => clearAuthenticatedUser();
+    const check = () => { void refreshUser(); };
+    window.addEventListener("rentnest:session-expired", expire);
+    window.addEventListener("focus", check);
+    const timer = window.setInterval(check, 60000);
+    return () => { window.removeEventListener("rentnest:session-expired", expire); window.removeEventListener("focus", check); window.clearInterval(timer); };
+  }, [clearAuthenticatedUser, refreshUser]);
+  const logout = useCallback(async () => {
+    try { await authService.logout(); clearAuthenticatedUser(); }
+    catch (error) { if (error instanceof ApiError && error.status === 401) clearAuthenticatedUser(); else throw error; }
+  }, [clearAuthenticatedUser]);
 
   const value = useMemo(() => ({
     user,
@@ -81,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser,
     setAuthenticatedUser,
     clearAuthenticatedUser,
-  }), [user, isLoading, error, refreshUser, setAuthenticatedUser, clearAuthenticatedUser]);
+    logout,
+  }), [user, isLoading, error, refreshUser, setAuthenticatedUser, clearAuthenticatedUser, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
