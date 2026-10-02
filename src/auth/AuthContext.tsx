@@ -12,58 +12,6 @@ import { ApiError, invalidateAuthRequests } from "../lib/api"
 import { authService } from "../services/auth"
 import type { AuthUser } from "../types/auth"
 type AuthContextValue = {
-<<<<<<< Updated upstream
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: Error | null;
-  refreshUser: () => Promise<void>;
-  setAuthenticatedUser: (user: AuthUser) => void;
-  clearAuthenticatedUser: () => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const authRevision = useRef(0);
-
-  const clearAuthenticatedUser = useCallback(() => {
-    authRevision.current += 1;
-    clearCsrfToken();
-    setUser(null);
-    setError(null);
-    setIsLoading(false);
-  }, []);
-
-  const setAuthenticatedUser = useCallback((authenticatedUser: AuthUser) => {
-    authRevision.current += 1;
-    clearCsrfToken();
-    setError(null);
-    setUser(authenticatedUser);
-    setIsLoading(false);
-  }, []);
-
-  const refreshUser = useCallback(async () => {
-    const revision = ++authRevision.current;
-    setIsLoading(true);
-    try {
-      const restoredUser = await authService.getCurrentUser();
-      if (revision !== authRevision.current) return;
-      clearCsrfToken();
-      setUser(restoredUser);
-      setError(null);
-    } catch (caughtError) {
-      if (revision !== authRevision.current) return;
-      clearCsrfToken();
-      setUser(null);
-      if (caughtError instanceof ApiError && (caughtError.status === 401 || caughtError.status === 403)) {
-        setError(null);
-      } else {
-        setError(caughtError instanceof Error ? caughtError : new Error("Unable to restore the current session."));
-=======
   user: AuthUser | null
   status: "checking" | "authenticated" | "guest"
   isAuthenticated: boolean
@@ -99,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(`rentnest:searches:${currentUser.current.id}`)
         sessionStorage.removeItem("rentnest:property-return")
         sessionStorage.removeItem("rentnest:login-return")
->>>>>>> Stashed changes
       }
     } catch {}
     currentUser.current = null
@@ -149,41 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : new Error("Unable to check your session"),
         )
     } finally {
-<<<<<<< Updated upstream
-      if (revision === authRevision.current) setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshUser();
-    const sessionEnded = () => clearAuthenticatedUser();
-    const restoreOnFocus = () => { void refreshUser(); };
-    window.addEventListener("rentnest:session-ended", sessionEnded);
-    window.addEventListener("focus", restoreOnFocus);
-    return () => {
-      authRevision.current += 1;
-      window.removeEventListener("rentnest:session-ended", sessionEnded);
-      window.removeEventListener("focus", restoreOnFocus);
-    };
-  }, [refreshUser, clearAuthenticatedUser]);
-
-  const value = useMemo(() => ({
-    user,
-    isAuthenticated: user !== null,
-    isLoading,
-    error,
-    refreshUser,
-    setAuthenticatedUser,
-    clearAuthenticatedUser,
-  }), [user, isLoading, error, refreshUser, setAuthenticatedUser, clearAuthenticatedUser]);
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-=======
       if (attempt === revision.current) setIsLoading(false)
     }
   }, [clearAuthenticatedUser])
   useEffect(() => {
     void refreshUser()
+    return ()=>{revision.current++}
   }, [refreshUser])
   useEffect(() => {
     const expired = () => {
@@ -203,21 +121,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     window.addEventListener("rentnest:session-expired", expired)
+    window.addEventListener("rentnest:session-ended", expired)
     window.addEventListener("focus", check)
     window.addEventListener("storage", sync)
     const timer = window.setInterval(check, 60000)
     return () => {
       window.removeEventListener("rentnest:session-expired", expired)
+      window.removeEventListener("rentnest:session-ended", expired)
       window.removeEventListener("focus", check)
       window.removeEventListener("storage", sync)
       clearInterval(timer)
     }
   }, [clearAuthenticatedUser, refreshUser])
   const logout = useCallback(async () => {
+    revision.current++
+    invalidateAuthRequests()
+    setIsLoading(true)
     try {
       await authService.logout()
     } catch (caught) {
-      if (!(caught instanceof ApiError && caught.status === 401)) throw caught
+      if (!(caught instanceof ApiError && caught.status === 401)) {setIsLoading(false);throw caught}
     }
     clearAuthenticatedUser()
     setSessionExpired(false)
@@ -256,7 +179,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
->>>>>>> Stashed changes
 }
 export function useAuth() {
   const value = useContext(AuthContext)

@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Guest public browsing renders database properties without Vite overlay or dashboard",
+    "Guest direct URLs protect all three dashboards",
+    "renter login, database dashboard, and backend session restoration",
+    "renter logout revokes session and clears private UI",
+    "owner login, database dashboard, and backend session restoration",
+    "Owner cannot open renter dashboard",
+    "owner logout revokes session and clears private UI",
+    "admin login, database dashboard, and backend session restoration",
+    "admin logout revokes session and clears private UI",
+    "Account switching clears previous identity and private favorites",
+    "Mobile guest discovery works"
+  ],
+  "errors": []
+}

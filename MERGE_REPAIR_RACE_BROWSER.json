@@ -1,0 +1,6 @@
+{
+  "checks": [
+    "Shared AuthContext logout cannot be undone by a delayed successful session response",
+    "Logout revoked the actual backend session"
+  ]
+}

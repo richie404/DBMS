@@ -25,16 +25,12 @@ export type ApiRequestOptions = Omit<RequestInit, "body" | "credentials" | "head
   csrf?: boolean;
 };
 
-<<<<<<< Updated upstream
-let csrfToken: string | null = null;
-=======
 let csrfToken: string | null = null
 let authRevision = 0
 export function invalidateAuthRequests() {
   authRevision++
   clearCsrfToken()
 }
->>>>>>> Stashed changes
 
 function buildUrl(path: string) {
   return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
@@ -63,13 +59,6 @@ export function clearCsrfToken() {
   csrfToken = null;
 }
 
-<<<<<<< Updated upstream
-export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { body, headers: suppliedHeaders, csrf = false, ...requestOptions } = options;
-  const headers = new Headers(suppliedHeaders);
-  if (body !== undefined) headers.set("Content-Type", "application/json");
-  if (csrf) headers.set("X-CSRF-Token", await getCsrfToken());
-=======
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
@@ -84,13 +73,12 @@ export async function apiRequest<T>(
   const headers = new Headers(suppliedHeaders)
   if (body !== undefined) headers.set("Content-Type", "application/json")
   if (csrf) headers.set("X-CSRF-Token", await getCsrfToken())
->>>>>>> Stashed changes
 
+  if(revision !== authRevision) throw new DOMException("Authentication changed", "AbortError");
   let response: Response;
   try {
     response = await fetch(buildUrl(path), {
       ...requestOptions,
-      cache: "no-store",
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: "include",
@@ -100,15 +88,6 @@ export async function apiRequest<T>(
   } catch {
     throw new ApiError(0, "Unable to reach the RentNest API.");
   }
-<<<<<<< Updated upstream
-  const payload = await parseResponse<T>(response);
-  if (!response.ok || !payload.success) {
-    if (response.status === 401) {
-      clearCsrfToken();
-      if (!["/auth/login", "/auth/register", "/auth/me"].includes(path)) {
-        window.dispatchEvent(new Event("rentnest:session-ended"));
-      }
-=======
   const payload = await parseResponse<T>(response)
   if (revision !== authRevision) throw new DOMException("Authentication changed", "AbortError")
   if (!response.ok || !payload.success) {
@@ -125,7 +104,6 @@ export async function apiRequest<T>(
     ) {
       clearCsrfToken()
       window.dispatchEvent(new Event("rentnest:session-expired"))
->>>>>>> Stashed changes
     }
     if (response.status === 403 && ["Permission denied", "Account access is unavailable"].includes(payload.message ?? "")) window.dispatchEvent(new Event("rentnest:access-denied"));
     throw new ApiError(response.status, payload.message ?? "Request failed", payload.errors);
