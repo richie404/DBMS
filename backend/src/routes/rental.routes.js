@@ -1,5 +1,4 @@
-import { recordActivity } from "../services/activity.service.js"
-﻿import { ensureFree } from "../services/availability.service.js"
+import { ensureFree } from "../services/availability.service.js"
 import { Router } from "express"
 import { bookingFilter } from "../services/booking-filters.js"
 import { today } from "../services/rental.service.js"
@@ -70,7 +69,7 @@ router.get(
     return { summary }
   }),
 )
-const bookingColumns = `(SELECT c.id FROM conversations c WHERE c.property_id=b.property_id AND c.renter_id=b.renter_id AND c.owner_id=p.owner_id LIMIT 1) AS conversationId,b.id,b.booking_code AS bookingCode,b.property_id AS propertyId,p.title,p.location,p.owner_id AS ownerId,u.name AS renterName,o.name AS ownerName,
+const bookingColumns = `b.id,b.booking_code AS bookingCode,b.property_id AS propertyId,p.title,p.location,p.owner_id AS ownerId,u.name AS renterName,o.name AS ownerName,
  DATE_FORMAT(b.start_date,'%Y-%m-%d') AS startDate,DATE_FORMAT(b.end_date,'%Y-%m-%d') AS endDate,b.monthly_rent_snapshot AS monthlyRent,b.deposit_snapshot AS depositAmount,b.total_amount AS totalRent,b.currency,b.status,b.decision_reason AS decisionReason`
 router.get(
   "/bookings",
@@ -208,7 +207,7 @@ router.post(
         userId: property.ownerId,
         category: "booking",
         title: "New booking request",
-        body: `${request.user.name} requested ${property.title || "your property"} (${calculated.startDate} â€“ ${calculated.endDate}).`,
+        body: `${request.user.name} requested ${property.title || "your property"} (${calculated.startDate} – ${calculated.endDate}).`,
         propertyId: property.id,
         bookingId: result.insertId,
       })
@@ -270,8 +269,10 @@ router.patch(
             "This rental period has already ended. Ask the renter for a new request.",
           )
         if (
-          (status === "approved" && booking.startISO < today()) ||
-          (property.availableFrom && booking.startISO < property.availableFrom)
+          status === "approved" &&
+          (booking.startISO < today() ||
+            (property.availableFrom &&
+              booking.startISO < property.availableFrom))
         )
           fail(
             409,
@@ -303,7 +304,6 @@ router.patch(
         propertyId: property.id,
         bookingId,
       })
-      await recordActivity(connection,request.user.id,"booking."+status,"booking",bookingId,`Booking ${booking.booking_code} ${status}`)
       return { status }
     }),
   ),
@@ -325,14 +325,12 @@ router.patch(
         [owned.propertyId],
       )
       const [[booking]] = await connection.execute(
-        "SELECT *,DATE_FORMAT(start_date,'%Y-%m-%d') AS startISO FROM bookings WHERE id=? AND renter_id=? AND deleted_at IS NULL FOR UPDATE",
+        "SELECT * FROM bookings WHERE id=? AND renter_id=? AND deleted_at IS NULL FOR UPDATE",
         [bookingId, request.user.id],
       )
       if (!booking) fail(404, "Booking not found")
-      if (!["pending", "approved", "confirmed"].includes(booking.status))
+      if (!["pending", "approved"].includes(booking.status))
         fail(409, "This booking cannot be cancelled here")
-      if (booking.startISO < today())
-        fail(409, "A rental that has started cannot be cancelled here")
       await connection.execute(
         "UPDATE bookings SET status='cancelled',cancelled_by=?,cancelled_at=NOW() WHERE id=?",
         [request.user.id, booking.id],
@@ -349,21 +347,10 @@ router.patch(
         propertyId: booking.property_id,
         bookingId: booking.id,
       })
-      await recordActivity(connection,request.user.id,"booking.cancelled","booking",booking.id,`Booking ${booking.booking_code} cancelled`)
       return { status: "cancelled" }
     }),
   ),
 )
-
-
-router.post('/bookings/:id/conversation',requireRole('owner'),requireCsrf,handle(request=>transaction(async connection=>{
- const bookingId=id(request.params.id);const [[ref]]=await connection.execute('SELECT property_id FROM bookings WHERE id=? AND deleted_at IS NULL',[bookingId]);if(!ref)fail(404,'Booking not found');
- const [[property]]=await connection.execute('SELECT id,owner_id FROM properties WHERE id=? FOR UPDATE',[ref.property_id]);if(!property||property.owner_id!==request.user.id)fail(404,'Booking not found');
- const [[booking]]=await connection.execute('SELECT renter_id FROM bookings WHERE id=? AND deleted_at IS NULL FOR UPDATE',[bookingId]);if(!booking)fail(404,'Booking not found');
- const [[renter]]=await connection.execute("SELECT id FROM users WHERE id=? AND status='active' AND deleted_at IS NULL",[booking.renter_id]);if(!renter)fail(409,'This renter is no longer available for messages');
- await connection.execute('INSERT INTO conversations (property_id,renter_id,owner_id) VALUES (?,?,?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)',[property.id,booking.renter_id,request.user.id]);
- const [[record]]=await connection.execute('SELECT id,disabled_at FROM conversations WHERE property_id=? AND renter_id=? AND owner_id=?',[property.id,booking.renter_id,request.user.id]);if(record.disabled_at)fail(409,'This conversation is disabled');return {conversationId:record.id};
-})));
 
 async function conversation(connection, conversationId, userId, lock = false) {
   const [[record]] = await connection.execute(
@@ -512,7 +499,7 @@ router.post(
       const text =
         typeof request.body?.text === "string" ? request.body.text.trim() : ""
       if (!text || text.length > 5000)
-        fail(400, "Enter a message of 1â€“5000 characters")
+        fail(400, "Enter a message of 1–5000 characters")
       const recipient =
         record.renter_id === request.user.id
           ? record.owner_id
@@ -543,7 +530,6 @@ router.post(
         "SELECT id,sender_id AS senderId,message_text AS text,sent_at AS sentAt,delivered_at AS deliveredAt,read_at AS readAt FROM messages WHERE id=?",
         [result.insertId],
       )
-      await recordActivity(connection,request.user.id,"message.sent","conversation",record.id,"Message sent")
       return { message }
     }),
   ),
@@ -552,7 +538,7 @@ router.get(
   "/notifications",
   handle(async (request) => {
     const [notifications] = await pool.execute(
-      `SELECT id,category,title,body,property_id AS propertyId,booking_id AS bookingId,conversation_id AS conversationId,read_at AS readAt,created_at AS createdAt FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC `,
+      "SELECT id,category,title,body,property_id AS propertyId,booking_id AS bookingId,conversation_id AS conversationId,read_at AS readAt,created_at AS createdAt FROM notifications WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 100",
       [request.user.id],
     )
     const [[{ unread }]] = await pool.execute(

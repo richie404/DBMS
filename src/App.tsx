@@ -1,3377 +1,1231 @@
-import RenterRecords from "./rentals/RenterRecords"
-import { type Criteria, propertyTypes } from "./services/properties"
-import AdminWorkspace, { useAdminOverview } from "./admin/AdminWorkspace"
-import AccountSettings from "./auth/AccountSettings"
-import OwnerWorkspace, { useOwnerSummary } from "./owner/OwnerWorkspace"
-import SessionSecurity from "./auth/SessionSecurity"
-import { requiredRole, safeReturnPath } from "./auth/navigation"
-import ListingCollection from "./properties/ListingCollection"
-import DashboardCards from "./rentals/DashboardCards"
-import { useWorkspaceNavigation } from "./rentals/useWorkspaceNavigation"
-import { useDashboardSummary } from "./rentals/useDashboardSummary"
-import {
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-} from "react"
-import LiveMessages from "./rentals/Messages"
-import LiveBookings from "./rentals/Bookings"
-import { rentalService } from "./services/rentals"
-import { useNotifications } from "./rentals/useNotifications"
+import ListingCollection from "./properties/ListingCollection";
+import DashboardCards from "./rentals/DashboardCards";
+import { useWorkspaceNavigation } from "./rentals/useWorkspaceNavigation";
+import { useDashboardSummary } from "./rentals/useDashboardSummary";
+import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import LiveMessages from "./rentals/Messages";
+import LiveBookings from "./rentals/Bookings";
+import { rentalService } from "./services/rentals";
+import { useNotifications } from "./rentals/useNotifications";
 
-function consumePropertyReturn() {
-  try {
-    const value = JSON.parse(
-      sessionStorage.getItem("rentnest:property-return") || "null",
-    )
-    sessionStorage.removeItem("rentnest:property-return")
-    return value &&
-      Number.isSafeInteger(value.propertyId) &&
-      value.propertyId > 0 &&
-      value.expiresAt > Date.now()
-      ? value as { propertyId: number; action: string }
-      : null
-  } catch {
-    return null
-  }
+function consumePropertyReturn() { try { const value=JSON.parse(sessionStorage.getItem("rentnest:property-return")||"null");sessionStorage.removeItem("rentnest:property-return");return value && Number.isSafeInteger(value.propertyId) && value.propertyId>0 && value.expiresAt>Date.now() ? value as {propertyId:number;action:string} : null;} catch{return null;} }
+
+import Discovery from "./properties/Discovery";
+import DatabasePropertyDetails from "./properties/PropertyDetails";
+import FavoritesPage from "./properties/FavoritesPage";
+import { FavoritesProvider, useFavorites } from "./properties/FavoritesContext";
+import { useAuth } from "./auth/AuthContext";
+import { authService } from "./services/auth";
+import OwnerDashboard from "./owner/OwnerDashboard";
+import OwnerPayments from "./owner/OwnerPayments";
+import OwnerPropertyDetails from "./owner/OwnerPropertyDetails";
+import { workspaceService, type Overview } from "./services/workspace";
+import AdminListings from "./admin/AdminListings";
+import AdminPayments from "./admin/AdminPayments";
+import AdminAnalyticsLive from "./admin/AdminAnalyticsLive";
+import AdminUsers from "./admin/AdminUsers";
+
+function initials(name: string) { return name.trim().split(/\s+/).filter(Boolean).map(part=>part[0]).slice(0,2).join("").toUpperCase() || "?"; }
+function dashboard(role: string) { return role === "owner" ? "Owner workspace" : role === "admin" ? "Admin overview" : "Renter dashboard"; }
+
+function useProfileForm() {
+  const { user, setAuthenticatedUser } = useAuth();
+  const values = () => ({ name:user?.name ?? "", username:user?.username ?? "", email:user?.email ?? "", phone:user?.phone ?? "" });
+  const [fields,setFields] = useState(values);
+  const [profileError,setProfileError] = useState("");
+  const [saving,setSaving] = useState(false);
+  const [profileSaved,setProfileSaved] = useState(false);
+  const mounted = useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  useEffect(()=>{setFields(values());},[user?.name,user?.username,user?.email,user?.phone]);
+  const saveProfile = async () => { setSaving(true); setProfileError(""); setProfileSaved(false); try { const updated = await authService.updateProfile(fields); if(mounted.current) { setAuthenticatedUser(updated); setProfileSaved(true); } } catch(error) { if(mounted.current) setProfileError(error instanceof Error ? error.message : "Unable to save profile"); } finally {if(mounted.current) setSaving(false);} };
+  const profileInput = (field: keyof typeof fields) => ({ value:fields[field], onChange:(event:React.ChangeEvent<HTMLInputElement>)=>{setFields(current=>({...current,[field]:event.target.value}));setProfileSaved(false);}, placeholder:field === "phone" ? "Not provided" : undefined });
+  return {user,profileInput,saveProfile,saving,profileError,profileSaved,resetProfile:()=>{setFields(values());setProfileError("");setProfileSaved(false);}};
 }
 
-import Discovery from "./properties/Discovery"
-import DatabasePropertyDetails from "./properties/PropertyDetails"
-import FavoritesPage from "./properties/FavoritesPage"
-import { FavoritesProvider, useFavorites } from "./properties/FavoritesContext"
-import { useAuth } from "./auth/AuthContext"
-import { authService } from "./services/auth"
+import { Button, StatusBadge as Badge } from "./components/system";
 
-function initials(name: string) {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "?"
-  )
-}
-function dashboard(role: string) {
-  return role === "owner"
-    ? "Owner workspace"
-    : role === "admin"
-      ? "Admin overview"
-      : role === "renter"
-        ? "Renter dashboard"
-        : "Access denied"
-}
+const homes = [
+  {
+    title: "Modern Apartment in Gulshan",
+    place: "Gulshan, Dhaka · Apartment",
+    price: "৳48,000",
+    meta: "2 beds · 2 baths · 980 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1564078516393-cf04bd966897?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available now",
+    rating: "4.9",
+  },
+  {
+    title: "Garden flat near the lake",
+    place: "Dhanmondi, Dhaka · Flat",
+    price: "৳36,500",
+    meta: "2 beds · 1 bath · 840 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1738168246881-40f35f8aba0a?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available 12 Jun",
+    rating: "4.8",
+  },
+  {
+    title: "Calm contemporary studio",
+    place: "Banani, Dhaka · Room",
+    price: "৳24,000",
+    meta: "1 bed · 1 bath · 620 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1665249934445-1de680641f50?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available now",
+    rating: "4.7",
+  },
+  {
+    title: "Lakeview family apartment",
+    place: "Uttara, Dhaka · Apartment",
+    price: "৳32,000",
+    meta: "3 beds · 2 baths · 1,240 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1707243794846-e9b391b07dcd?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available now",
+    rating: "4.9",
+  },
+  {
+    title: "Modern home in Bashundhara",
+    place: "Bashundhara, Dhaka · Flat",
+    price: "৳42,000",
+    meta: "3 beds · 3 baths · 1,460 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1758448511578-ec292173b70c?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available 20 Jun",
+    rating: "4.8",
+  },
+  {
+    title: "City-view serviced suite",
+    place: "Mirpur, Dhaka · Apartment",
+    price: "৳28,500",
+    meta: "2 beds · 2 baths · 910 sq ft",
+    image:
+      "https://images.unsplash.com/photo-1671143483026-07786e8bba8e?auto=format&fit=crop&w=1200&q=85",
+    tag: "Available now",
+    rating: "4.6",
+  },
+];
 
-import { Button, StatusBadge as Badge } from "./components/system"
-
-type IconName = "home" | "heart" | "calendar" | "message" | "bell" | "search" | "sliders" | "chevron" | "pin" | "star" | "building" | "users" | "settings" | "plus" | "more" | "eye" | "mail" | "lock" | "logout" | "paperclip" | "arrow"
+type IconName =
+  | "home"
+  | "heart"
+  | "calendar"
+  | "message"
+  | "bell"
+  | "search"
+  | "sliders"
+  | "chevron"
+  | "pin"
+  | "star"
+  | "building"
+  | "users"
+  | "settings"
+  | "plus"
+  | "more"
+  | "eye"
+  | "mail"
+  | "lock"
+  | "logout"
+  | "paperclip"
+  | "arrow";
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
-    home: (
-      <>
-        <path d="m3 11 9-8 9 8" />
-        <path d="M5 10v10h14V10M9 20v-6h6v6" />
-      </>
-    ),
-    heart: (
-      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z" />
-    ),
-    calendar: (
-      <>
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M16 3v4M8 3v4M3 10h18" />
-      </>
-    ),
-    message: (
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-    ),
-    bell: (
-      <>
-        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-        <path d="M10 21h4" />
-      </>
-    ),
-    search: (
-      <>
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-4-4" />
-      </>
-    ),
-    sliders: (
-      <>
-        <path d="M4 6h16M4 12h16M4 18h16" />
-        <circle cx="8" cy="6" r="2" />
-        <circle cx="16" cy="12" r="2" />
-        <circle cx="10" cy="18" r="2" />
-      </>
-    ),
+    home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></>,
+    heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.7-7.5 1.1-1.1a5.5 5.5 0 0 0 0-7.8Z" />,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
+    message: <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />,
+    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+    sliders: <><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="8" cy="6" r="2" /><circle cx="16" cy="12" r="2" /><circle cx="10" cy="18" r="2" /></>,
     chevron: <path d="m9 18 6-6-6-6" />,
-    pin: (
-      <>
-        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
-        <circle cx="12" cy="10" r="2" />
-      </>
-    ),
-    star: (
-      <path d="m12 2 3 6 7 .9-5 4.8 1.3 6.8L12 17l-6.3 3.5L7 13.7 2 8.9 9 8Z" />
-    ),
-    building: (
-      <>
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <path d="M9 8h2M14 8h2M9 12h2M14 12h2M10 21v-4h4v4" />
-      </>
-    ),
-    users: (
-      <>
-        <circle cx="9" cy="8" r="4" />
-        <path d="M3 21v-2a6 6 0 0 1 12 0v2M16 4a4 4 0 0 1 0 8M17 15a6 6 0 0 1 4 6" />
-      </>
-    ),
-    settings: (
-      <>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.5 1A7 7 0 0 0 15 6l-.4-3h-4l-.4 3a7 7 0 0 0-1.5 1L6.2 6 4.1 9.5 6.5 11a7 7 0 0 0 0 2L4 14.5 6 18l2.6-1a7 7 0 0 0 1.5 1l.4 3h4l.4-3a7 7 0 0 0 1.5-1l2.5 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z" />
-      </>
-    ),
+    pin: <><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2" /></>,
+    star: <path d="m12 2 3 6 7 .9-5 4.8 1.3 6.8L12 17l-6.3 3.5L7 13.7 2 8.9 9 8Z" />,
+    building: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M9 8h2M14 8h2M9 12h2M14 12h2M10 21v-4h4v4" /></>,
+    users: <><circle cx="9" cy="8" r="4" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 4a4 4 0 0 1 0 8M17 15a6 6 0 0 1 4 6" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.5 1A7 7 0 0 0 15 6l-.4-3h-4l-.4 3a7 7 0 0 0-1.5 1L6.2 6 4.1 9.5 6.5 11a7 7 0 0 0 0 2L4 14.5 6 18l2.6-1a7 7 0 0 0 1.5 1l.4 3h4l.4-3a7 7 0 0 0 1.5-1l2.5 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z" /></>,
     plus: <path d="M12 5v14M5 12h14" />,
-    more: (
-      <>
-        <circle cx="5" cy="12" r="1" />
-        <circle cx="12" cy="12" r="1" />
-        <circle cx="19" cy="12" r="1" />
-      </>
-    ),
-    eye: (
-      <>
-        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-        <circle cx="12" cy="12" r="2.5" />
-      </>
-    ),
-    mail: (
-      <>
-        <rect x="3" y="5" width="18" height="14" rx="2" />
-        <path d="m4 7 8 6 8-6" />
-      </>
-    ),
-    lock: (
-      <>
-        <rect x="4" y="10" width="16" height="11" rx="2" />
-        <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
-      </>
-    ),
-    logout: (
-      <>
-        <path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H8" />
-      </>
-    ),
-    paperclip: (
-      <path d="m20 12-8 8a6 6 0 0 1-8-8l9-9a4 4 0 0 1 6 6l-9 9a2 2 0 0 1-3-3l8-8" />
-    ),
-    arrow: (
-      <>
-        <path d="M5 12h14M13 6l6 6-6 6" />
-      </>
-    ),
-  }
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name]}
-    </svg>
-  )
+    more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
+    eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></>,
+    logout: <><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H8" /></>,
+    paperclip: <path d="m20 12-8 8a6 6 0 0 1-8-8l9-9a4 4 0 0 1 6 6l-9 9a2 2 0 0 1-3-3l8-8" />,
+    arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function LoadingButton({
-  loading,
-  children,
-  loadingText = "Saving...",
-  onClick,
-  variant = "primary",
-}: {
-  loading: boolean
-  children: ReactNode
-  loadingText?: string
-  onClick?: () => void
-  variant?: "primary" | "secondary" | "ghost" | "destructive"
-}) {
-  return (
-    <button
-      className={`button button-${variant} loading-button`}
-      onClick={onClick}
-      disabled={loading}
-    >
-      {loading && <span className="button-spinner" />}
-      {loading ? loadingText : children}
-    </button>
-  )
+function LoadingButton({ loading, children, loadingText = "Saving...", onClick, variant = "primary" }: { loading:boolean; children:ReactNode; loadingText?:string; onClick?:()=>void; variant?:"primary"|"secondary"|"ghost"|"destructive" }) {
+  return <button className={`button button-${variant} loading-button`} onClick={onClick} disabled={loading}>{loading&&<span className="button-spinner"/>}{loading?loadingText:children}</button>;
 }
 
 function PageLoader() {
-  return (
-    <div className="page-loader" role="status" aria-live="polite">
-      <div className="loader-brand">
-        <span className="brand-mark">
-          <i />
-          <i />
-        </span>
-        <strong>RentNest</strong>
-      </div>
-      <span className="page-loader-indicator">
-        <i />
-        <i />
-        <i />
-      </span>
-      <p>Loading RentNest...</p>
-    </div>
-  )
+  return <div className="page-loader" role="status" aria-live="polite"><div className="loader-brand"><span className="brand-mark"><i/><i/></span><strong>RentNest</strong></div><span className="page-loader-indicator"><i/><i/><i/></span><p>Loading RentNest...</p></div>;
 }
 
 function PropertyCardSkeleton() {
-  return (
-    <article className="property-card-skeleton" aria-hidden="true">
-      <div className="skeleton skeleton-property-image" />
-      <div>
-        <span className="skeleton skeleton-title" />
-        <span className="skeleton skeleton-copy" />
-        <span className="skeleton skeleton-copy short" />
-        <div>
-          <span className="skeleton skeleton-price" />
-          <span className="skeleton skeleton-action" />
-        </div>
-      </div>
-    </article>
-  )
+  return <article className="property-card-skeleton" aria-hidden="true"><div className="skeleton skeleton-property-image"/><div><span className="skeleton skeleton-title"/><span className="skeleton skeleton-copy"/><span className="skeleton skeleton-copy short"/><div><span className="skeleton skeleton-price"/><span className="skeleton skeleton-action"/></div></div></article>;
 }
 
 function DashboardCardSkeleton() {
-  return (
-    <article className="dashboard-card-skeleton" aria-hidden="true">
-      <span className="skeleton" />
-      <div>
-        <i className="skeleton" />
-        <i className="skeleton" />
-        <i className="skeleton" />
-      </div>
-    </article>
-  )
+  return <article className="dashboard-card-skeleton" aria-hidden="true"><span className="skeleton"/><div><i className="skeleton"/><i className="skeleton"/><i className="skeleton"/></div></article>;
 }
 
 function NotificationSkeleton() {
-  return (
-    <article className="notification-skeleton" aria-hidden="true">
-      <span className="skeleton" />
-      <div>
-        <i className="skeleton" />
-        <i className="skeleton" />
-        <i className="skeleton" />
-      </div>
-    </article>
-  )
+  return <article className="notification-skeleton" aria-hidden="true"><span className="skeleton"/><div><i className="skeleton"/><i className="skeleton"/><i className="skeleton"/></div></article>;
 }
 
-function TableSkeleton({ rows = 5 }: { rows?: number }) {
-  return (
-    <div className="table-skeleton" aria-hidden="true">
-      {Array.from({ length: rows }, (_, index) => (
-        <article key={index}>
-          <span className="skeleton table-avatar-skeleton" />
-          <div>
-            <i className="skeleton" />
-            <i className="skeleton" />
-          </div>
-          <span className="skeleton table-cell-skeleton" />
-          <span className="skeleton table-cell-skeleton short" />
-          <span className="skeleton table-action-skeleton" />
-        </article>
-      ))}
+function TableSkeleton({ rows = 5 }: { rows?:number }) {
+  return <div className="table-skeleton" aria-hidden="true">{Array.from({length:rows},(_,index)=><article key={index}><span className="skeleton table-avatar-skeleton"/><div><i className="skeleton"/><i className="skeleton"/></div><span className="skeleton table-cell-skeleton"/><span className="skeleton table-cell-skeleton short"/><span className="skeleton table-action-skeleton"/></article>)}</div>;
+}
+
+function EmptyState({ icon, title, description, actionLabel, onAction, variant = "default", compact = false }: { icon:IconName; title:string; description?:string; actionLabel?:string; onAction?:()=>void; variant?:"default"|"favorites"|"bookings"|"messages"|"notifications"|"listings"; compact?:boolean }) {
+  return <div className={`empty-state-system empty-${variant} ${compact?"compact":""}`}><div className="empty-state-illustration"><i/><span><Icon name={icon} size={compact?25:34}/></span><b/></div><h2>{title}</h2>{description&&<p>{description}</p>}{actionLabel&&onAction&&<Button onClick={onAction}>{actionLabel} <Icon name="arrow" size={14}/></Button>}</div>;
+}
+
+function ErrorState({ type, title, description, primaryLabel, onPrimary, secondaryLabel, onSecondary, fullPage = false }: { type:"network"|"server"|"not-found"|"permission"; title:string; description?:string; primaryLabel:string; onPrimary:()=>void; secondaryLabel?:string; onSecondary?:()=>void; fullPage?:boolean }) {
+  const icon:IconName=type==="permission"?"lock":type==="not-found"?"home":type==="network"?"search":"settings";
+  return <div className={`error-state-system error-${type} ${fullPage?"full-page":""}`} role="alert"><div className="error-state-illustration"><i/><span><Icon name={icon} size={34}/></span><b>{type==="not-found"?"404":"!"}</b></div><p className="eyebrow">{type==="network"?"CONNECTION ERROR":type==="server"?"SYSTEM ERROR":type==="permission"?"ACCESS RESTRICTED":"NOT FOUND"}</p><h1>{title}</h1>{description&&<p className="error-state-description">{description}</p>}<div className="error-state-actions"><Button onClick={onPrimary}>{primaryLabel}</Button>{secondaryLabel&&onSecondary&&<Button variant="secondary" onClick={onSecondary}>{secondaryLabel}</Button>}</div></div>;
+}
+
+function FormError({ message }: { message:string }) {
+  return <small className="form-error-message" role="alert"><span>!</span>{message}</small>;
+}
+
+function ConfirmationModal({ type, title, description, confirmLabel, cancelLabel = "Cancel", onConfirm, onCancel, children, reason, onReasonChange, reasonLabel = "Reason" }: { type:"delete"|"approve"|"reject"|"cancel"|"ban"; title:string; description:string; confirmLabel:string; cancelLabel?:string; onConfirm:()=>void; onCancel:()=>void; children?:ReactNode; reason?:string; onReasonChange?:(value:string)=>void; reasonLabel?:string }) {
+  const destructive=type!=="approve";
+  const icon:IconName=type==="ban"?"users":type==="delete"?"logout":type==="cancel"?"calendar":type==="approve"?"settings":"more";
+  return <div className="modal-backdrop confirmation-modal-backdrop" role="presentation" onMouseDown={onCancel}><section className={`modal confirmation-modal confirmation-${type}`} role="dialog" aria-modal="true" aria-labelledby={`confirmation-${type}-title`} onMouseDown={event=>event.stopPropagation()}><div className={`confirmation-icon ${destructive?"danger":"success"}`}><Icon name={icon} size={22}/></div><div className="confirmation-copy"><p className="eyebrow">{type.toUpperCase()} CONFIRMATION</p><h2 id={`confirmation-${type}-title`}>{title}</h2><p>{description}</p></div>{children&&<div className="confirmation-context">{children}</div>}{onReasonChange&&<label className="confirmation-reason"><span>{reasonLabel}</span><textarea value={reason||""} onChange={event=>onReasonChange(event.target.value)} placeholder={type==="ban"?"Explain why this user is being banned...":"Explain rejection reason"}/></label>}<div className="confirmation-separator"/><div className="confirmation-actions"><Button variant="secondary" onClick={onCancel}>{cancelLabel}</Button><Button variant={destructive?"destructive":"primary"} onClick={onConfirm}>{confirmLabel}</Button></div></section></div>;
+}
+
+function NavItem({ icon, label, active, onClick, badge }: { icon: IconName; label: string; active?: boolean; onClick: () => void; badge?: string }) {
+  return <button className={`nav-item ${active ? "active" : ""}`} onClick={onClick}><Icon name={icon} /><span>{label}</span>{badge && <b>{badge}</b>}</button>;
+}
+
+function MobileBottomNav({ role, page, go }: { role:"Renter"|"Owner"|"Admin"; page:string; go:(page:string)=>void }) {
+  const items = role==="Renter"?[["home","Home","Renter dashboard"],["search","Search","Discover"],["calendar","Bookings","Bookings"],["message","Messages","Messages"],["users","Profile","Settings"]]:role==="Owner"?[["home","Home","Owner workspace"],["building","Listings","Owner listings"],["calendar","Requests","Owner booking requests"],["message","Messages","Owner messages"],["users","Profile","Owner profile"]]:[["home","Home","Admin overview"],["users","Users","Admin users"],["building","Listings","Admin listings"],["calendar","Bookings","Admin bookings"],["settings","More","Admin settings"]];
+  const active=(destination:string)=>page===destination||destination==="Bookings"&&page==="Booking details"||destination==="Owner listings"&&["Owner add property","Owner edit property"].includes(page)||destination==="Owner booking requests"&&page==="Owner booking details";
+  return <nav className={`mobile-bottom-nav mobile-${role.toLowerCase()}`} aria-label={`${role} mobile navigation`}>{items.map(item=><button className={active(item[2])?"active":""} onClick={()=>go(item[2])} key={item[1]}><Icon name={item[0] as IconName} size={19}/><span>{item[1]}</span></button>)}</nav>;
+}
+
+function Header({ title, eyebrow, action }: { title: string; eyebrow?: string; action?: ReactNode }) {
+  return <div className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1></div>{action}</div>;
+}
+
+function PropertyCard({ home, saved, onSave, onView }: { home: typeof homes[0]; saved: boolean; onSave: () => void; onView?: () => void }) {
+  return <article className="property-card">
+    <div className="property-image">
+      <img src={home.image} alt={`${home.title} interior`} />
+      <Badge>{home.tag}</Badge>
+      <button className={`heart ${saved ? "saved" : ""}`} onClick={onSave} aria-label="Save property"><Icon name="heart" /></button>
     </div>
-  )
-}
-
-function EmptyState({
-  icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-  variant = "default",
-  compact = false,
-}: {
-  icon: IconName
-  title: string
-  description?: string
-  actionLabel?: string
-  onAction?: () => void
-  variant?: "default" | "favorites" | "bookings" | "messages" | "notifications" | "listings"
-  compact?: boolean
-}) {
-  return (
-    <div
-      className={`empty-state-system empty-${variant} ${
-        compact ? "compact" : ""
-      }`}
-    >
-      <div className="empty-state-illustration">
-        <i />
-        <span>
-          <Icon name={icon} size={compact ? 25 : 34} />
-        </span>
-        <b />
-      </div>
-      <h2>{title}</h2>
-      {description && <p>{description}</p>}
-      {actionLabel && onAction && (
-        <Button onClick={onAction}>
-          {actionLabel} <Icon name="arrow" size={14} />
-        </Button>
-      )}
+    <div className="property-body">
+      <div className="property-row"><h3>{home.title}</h3><span className="rating"><Icon name="star" size={14} /> {home.rating}</span></div>
+      <p className="location"><Icon name="pin" size={16} />{home.place}</p>
+      <p className="meta">{home.meta}</p>
+      <div className="property-row price-row"><p><strong>{home.price}</strong> / month</p><button className="card-cta" onClick={onView}>View details <Icon name="arrow" size={15} /></button></div>
     </div>
-  )
+  </article>;
 }
 
-function ErrorState({
-  type,
-  title,
-  description,
-  primaryLabel,
-  onPrimary,
-  secondaryLabel,
-  onSecondary,
-  fullPage = false,
-}: {
-  type: "network" | "server" | "not-found" | "permission"
-  title: string
-  description?: string
-  primaryLabel: string
-  onPrimary: () => void
-  secondaryLabel?: string
-  onSecondary?: () => void
-  fullPage?: boolean
-}) {
-  const icon: IconName =
-    type === "permission"
-      ? "lock"
-      : type === "not-found"
-        ? "home"
-        : type === "network"
-          ? "search"
-          : "settings"
-  return (
-    <div
-      className={`error-state-system error-${type} ${
-        fullPage ? "full-page" : ""
-      }`}
-      role="alert"
-    >
-      <div className="error-state-illustration">
-        <i />
-        <span>
-          <Icon name={icon} size={34} />
-        </span>
-        <b>{type === "not-found" ? "404" : "!"}</b>
-      </div>
-      <p className="eyebrow">
-        {type === "network"
-          ? "CONNECTION ERROR"
-          : type === "server"
-            ? "SYSTEM ERROR"
-            : type === "permission"
-              ? "ACCESS RESTRICTED"
-              : "NOT FOUND"}
-      </p>
-      <h1>{title}</h1>
-      {description && <p className="error-state-description">{description}</p>}
-      <div className="error-state-actions">
-        <Button onClick={onPrimary}>{primaryLabel}</Button>
-        {secondaryLabel && onSecondary && (
-          <Button variant="secondary" onClick={onSecondary}>
-            {secondaryLabel}
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function FormError({ message }: { message: string }) {
-  return (
-    <small className="form-error-message" role="alert">
-      <span>!</span>
-      {message}
-    </small>
-  )
-}
-
-function ConfirmationModal({
-  type,
-  title,
-  description,
-  confirmLabel,
-  cancelLabel = "Cancel",
-  onConfirm,
-  onCancel,
-  children,
-  reason,
-  onReasonChange,
-  reasonLabel = "Reason",
-}: {
-  type: "delete" | "approve" | "reject" | "cancel" | "ban"
-  title: string
-  description: string
-  confirmLabel: string
-  cancelLabel?: string
-  onConfirm: () => void
-  onCancel: () => void
-  children?: ReactNode
-  reason?: string
-  onReasonChange?: (value: string) => void
-  reasonLabel?: string
-}) {
-  const destructive = type !== "approve"
-  const icon: IconName =
-    type === "ban"
-      ? "users"
-      : type === "delete"
-        ? "logout"
-        : type === "cancel"
-          ? "calendar"
-          : type === "approve"
-            ? "settings"
-            : "more"
-  return (
-    <div
-      className="modal-backdrop confirmation-modal-backdrop"
-      role="presentation"
-      onMouseDown={onCancel}
-    >
-      <section
-        className={`modal confirmation-modal confirmation-${type}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`confirmation-${type}-title`}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div
-          className={`confirmation-icon ${destructive ? "danger" : "success"}`}
-        >
-          <Icon name={icon} size={22} />
-        </div>
-        <div className="confirmation-copy">
-          <p className="eyebrow">{type.toUpperCase()} CONFIRMATION</p>
-          <h2 id={`confirmation-${type}-title`}>{title}</h2>
-          <p>{description}</p>
-        </div>
-        {children && <div className="confirmation-context">{children}</div>}
-        {onReasonChange && (
-          <label className="confirmation-reason">
-            <span>{reasonLabel}</span>
-            <textarea
-              value={reason || ""}
-              onChange={(event) => onReasonChange(event.target.value)}
-              placeholder={
-                type === "ban"
-                  ? "Explain why this user is being banned..."
-                  : "Explain rejection reason"
-              }
-            />
-          </label>
-        )}
-        <div className="confirmation-separator" />
-        <div className="confirmation-actions">
-          <Button variant="secondary" onClick={onCancel}>
-            {cancelLabel}
-          </Button>
-          <Button
-            variant={destructive ? "destructive" : "primary"}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </Button>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function NavItem({
-  icon,
-  label,
-  active,
-  onClick,
-  badge,
-}: {
-  icon: IconName
-  label: string
-  active?: boolean
-  onClick: () => void
-  badge?: string
-}) {
-  return (
-    <button className={`nav-item ${active ? "active" : ""}`} onClick={onClick}>
-      <Icon name={icon} />
-      <span>{label}</span>
-      {badge && <b>{badge}</b>}
-    </button>
-  )
-}
-
-function MobileBottomNav({
-  role,
-  page,
-  go,
-}: {
-  role: "Renter" | "Owner" | "Admin" | "Guest"
-  page: string
-  go: (page: string) => void
-}) {
-  const items =
-    role === "Renter"
-      ? [
-          ["home", "Home", "Renter dashboard"],
-          ["search", "Search", "Discover"],
-          ["calendar", "Bookings", "Bookings"],
-          ["message", "Messages", "Messages"],
-          ["users", "Profile", "Settings"],
-        ]
-      : role === "Owner"
-        ? [
-            ["home", "Home", "Owner workspace"],
-            ["building", "Listings", "Owner listings"],
-            ["calendar", "Requests", "Owner booking requests"],
-            ["message", "Messages", "Owner messages"],
-            ["users", "Profile", "Owner profile"],
-          ]
-        : [
-            ["home", "Home", "Admin overview"],
-            ["users", "Users", "Admin users"],
-            ["building", "Listings", "Admin listings"],
-            ["calendar", "Bookings", "Admin bookings"],
-            ["settings", "More", "Admin settings"],
-          ]
-  const active = (destination: string) =>
-    page === destination ||
-    (destination === "Bookings" && page === "Booking details") ||
-    (destination === "Owner listings" &&
-      ["Owner add property", "Owner edit property"].includes(page)) ||
-    (destination === "Owner booking requests" &&
-      page === "Owner booking details")
-  return (
-    <nav
-      className={`mobile-bottom-nav mobile-${role.toLowerCase()}`}
-      aria-label={`${role} mobile navigation`}
-    >
-      {items.map((item) => (
-        <button
-          className={active(item[2]) ? "active" : ""}
-          onClick={() => go(item[2])}
-          key={item[1]}
-        >
-          <Icon name={item[0] as IconName} size={19} />
-          <span>{item[1]}</span>
-        </button>
-      ))}
-    </nav>
-  )
-}
-
-function Header({
-  title,
-  eyebrow,
-  action,
-}: {
-  title: string
-  eyebrow?: string
-  action?: ReactNode
-}) {
-  return (
-    <div className="page-header">
-      <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h1>{title}</h1>
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function RenterDashboard({
-  go,
-  viewProperty,
-  summaryState,
-  onSummary,
-  notifications,
-}: {
-  notifications: AppNotification[]
-  summaryState: ReturnType<typeof useDashboardSummary>
-  onSummary: (kind: string) => void
-  go: (page: string) => void
-  viewProperty: (id: number) => void
-}) {
-  const { favorites, error: favoritesError } = useFavorites()
-  return (
-    <div className="renter-dashboard">
-      <div className="renter-page-head">
-        <div>
-          <p className="eyebrow">RENTER OVERVIEW</p>
-          <h1>Your rental journey</h1>
-          <p>
-            Everything you're following, booking, and discussing in one place.
-          </p>
-        </div>
-        <Button onClick={() => go("Discover")}>
-          <Icon name="search" /> Browse Homes
-        </Button>
-      </div>
-      <DashboardCards
-        state={summaryState}
-        onOpen={onSummary}
-        icons={["heart", "calendar", "settings", "message"].map((name) => (
-          <Icon key={name} name={name as IconName} />
-        ))}
-        arrow={<Icon name="chevron" size={16} />}
-      />
-      <section className="quick-actions">
-        <div className="dashboard-section-head">
-          <div>
-            <h2>Quick actions</h2>
-            <p>Jump back into what matters</p>
-          </div>
-        </div>
-        <div className="quick-action-grid">
-          {[
-            [
-              "search",
-              "Browse Homes",
-              "Discover verified properties that fit your life.",
-              "Discover",
-            ],
-            [
-              "calendar",
-              "View Bookings",
-              "Track requests, dates, and approval status.",
-              "Bookings",
-            ],
-            [
-              "message",
-              "Message Owners",
-              "Continue conversations about your next home.",
-              "Messages",
-            ],
-          ].map((item) => (
-            <button key={item[1]} onClick={() => go(item[3])}>
-              <span>
-                <Icon name={item[0] as IconName} />
-              </span>
-              <div>
-                <strong>{item[1]}</strong>
-                <small>{item[2]}</small>
-              </div>
-              <Icon name="arrow" size={17} />
-            </button>
-          ))}
-        </div>
-      </section>
-      <RenterRecords
-        onProperty={viewProperty}
-        onBookings={() => go("Bookings")}
-        onLogin={() => go("Login")}
-      />
-      <div className="dashboard-main-grid">
-        <FavoritesPage
-          compact
-          onView={viewProperty}
-          onLogin={() => go("Login")}
-          onBrowse={() => go("Discover")}
-        />
-        <aside className="recent-activity">
-          <div className="dashboard-section-head">
-            <div>
-              <h2>Recent Activity</h2>
-              <p>Your latest updates</p>
-            </div>
-          </div>
-          <div className="activity-timeline">
-            {notifications.length ? notifications.slice(0, 3).map((item) => (
-                <article key={item.id}>
-                  <span className={"timeline-icon " + item.tone}>
-                    <Icon name={item.icon} />
-                  </span>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.message}</p>
-                    <small>{item.time}</small>
-                  </div>
-                </article>
-              )) : <p>No recent account updates.</p>}
-          </div>
-        </aside>
-      </div>
-    </div>
-  )
-}
-
-type AppNotification = {
-  id: number
-  icon: IconName
-  title: string
-  message: string
-  time: string
-  read: boolean
-  tone: "success" | "warning" | "brand" | "neutral"
-  category: "Booking" | "Messages" | "Listings"
-}
-
-function NotificationsPage({
-  go,
-  notifications,
-  setNotifications,
-  dashboardPage,
-  onOpen,
-  onMarkAll,
-  activeFilter,
-  onFilter,
-}: {
-  activeFilter?: string
-  onFilter?: (filter: string) => void
-  onMarkAll?: () => void
-  onOpen?: (id: number) => void
-  go: (page: string) => void
-  notifications: AppNotification[]
-  setNotifications: Dispatch<SetStateAction<AppNotification[]>>
-  dashboardPage: string
-}) {
-  type NotificationFilter = "All" | "Unread" | "Booking" | "Messages" | "Listings"
-  const [localFilter, setLocalFilter] = useState<NotificationFilter>("All")
-  const filter: NotificationFilter =
-    activeFilter === undefined
-      ? localFilter
-      : ["All", "Unread", "Booking", "Messages", "Listings"].includes(
-            activeFilter,
-          )
-        ? activeFilter as NotificationFilter
-        : "All"
-  const setFilter = (value: NotificationFilter) =>
-    onFilter ? onFilter(value) : setLocalFilter(value)
-  const [loading, setLoading] = useState(true)
+function RenterDashboard({ saved, toggleSaved, go, viewHome, viewProperty, summaryState, onSummary, notifications }: { notifications:AppNotification[]; summaryState:ReturnType<typeof useDashboardSummary>; onSummary:(kind:string)=>void; saved: number[]; toggleSaved: (i: number) => void; go: (page: string) => void; viewHome: (i: number) => void; viewProperty: (id:number)=>void }) {
+  const {favorites} = useFavorites();
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 320)
-    return () => window.clearTimeout(timer)
-  }, [])
-  const visible = notifications.filter(
-    (item) =>
-      filter === "All" ||
-      (filter === "Unread" && !item.read) ||
-      item.category === filter,
-  )
-  const unread = notifications.filter((item) => !item.read).length
-  const markAll = () =>
-    onMarkAll
-      ? onMarkAll()
-      : setNotifications((items) =>
-          items.map((item) => ({ ...item, read: true })),
-        )
-  const markRead = (id: number) =>
-    setNotifications((items) =>
-      items.map((item) => (item.id === id ? { ...item, read: true } : item)),
-    )
-  if (loading)
-    return (
-      <div className="notification-center">
-        <div className="notification-center-head">
-          <div>
-            <p className="eyebrow">ACCOUNT UPDATES</p>
-            <h1>Notifications</h1>
-            <p>Loading your latest updates.</p>
-          </div>
-        </div>
-        <div className="notification-list notification-loading-list">
-          {[0, 1, 2, 3, 4].map((index) => (
-            <NotificationSkeleton key={index} />
-          ))}
-        </div>
-      </div>
-    )
-  return (
-    <div className="notification-center">
-      <div className="notification-center-head">
-        <div>
-          <p className="eyebrow">ACCOUNT UPDATES</p>
-          <h1>Notifications</h1>
-          <p>Stay informed about bookings, messages, and property activity.</p>
-        </div>
-        <Button variant="secondary" onClick={markAll} disabled={!unread}>
-          <span className="button-check">✓</span> Mark all as read
-        </Button>
-      </div>
-      <div className="notification-toolbar">
-        <div className="notification-tabs">
-          {([
-            "All",
-            "Unread",
-            "Booking",
-            "Messages",
-            "Listings",
-          ] as NotificationFilter[]).map((value) => (
-            <button
-              className={filter === value ? "active" : ""}
-              onClick={() => setFilter(value)}
-              key={value}
-            >
-              {value}{" "}
-              <span>
-                {value === "All"
-                  ? notifications.length
-                  : value === "Unread"
-                    ? unread
-                    : notifications.filter((item) => item.category === value)
-                        .length}
-              </span>
-            </button>
-          ))}
-        </div>
-        {unread > 0 && (
-          <p>
-            <i /> {unread} unread{" "}
-            {unread === 1 ? "notification" : "notifications"}
-          </p>
-        )}
-      </div>
-      {visible.length ? (
-        <div className="notification-list">
-          <div className="notification-list-label">
-            {filter === "Unread"
-              ? "UNREAD UPDATES"
-              : filter === "All"
-                ? "RECENT UPDATES"
-                : `${filter.toUpperCase()} UPDATES`}
-          </div>
-          {visible.map((item) => (
-            <article
-              className={`notification-item ${item.read ? "read" : "unread"}`}
-              key={item.id}
-              tabIndex={0}
-              role="button"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  markRead(item.id)
-                  onOpen?.(item.id)
-                }
-              }}
-              onClick={() => {
-                markRead(item.id)
-                onOpen?.(item.id)
-              }}
-            >
-              <span className={`notification-type ${item.tone}`}>
-                <Icon name={item.icon} />
-              </span>
-              <div>
-                <span className="notification-category">{item.category}</span>
-                <strong>{item.title}</strong>
-                <p>{item.message}</p>
-                <time>{item.time}</time>
-              </div>
-              {!item.read && <i className="unread-dot" />}
-              <button className="icon-button" aria-label="Notification options">
-                <Icon name="more" />
-              </button>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon="bell"
-          variant="notifications"
-          title="No notifications yet."
-          description={
-            filter === "Unread"
-              ? "You're all caught up. New updates will appear here."
-              : "Important account and platform updates will appear here."
-          }
-          actionLabel="Return to Dashboard"
-          onAction={() => go(dashboardPage)}
-        />
-      )}
+    const timer = window.setTimeout(() => setState("ready"), 450);
+    return () => window.clearTimeout(timer);
+  }, []);
+  if (state === "loading") return <div className="renter-dashboard"><div className="dashboard-skeleton-head"><div className="skeleton line wide" /><div className="skeleton line short" /></div><div className="renter-summary">{Array.from({length:4}).map((_,i)=><DashboardCardSkeleton key={i}/>)}</div><div className="dashboard-skeleton-content"><div className="skeleton block" /><div className="skeleton block" /></div></div>;
+  if (state === "error") return <ErrorState type="server" title="Something went wrong on our side." description="We couldn't load your dashboard right now." primaryLabel="Try Again" onPrimary={()=>setState("ready")}/>;
+  const savedHomes = saved.map(i=>({home:homes[i],index:i})).filter(item=>item.home).slice(0,3);
+  return <div className="renter-dashboard">
+    <div className="renter-page-head"><div><p className="eyebrow">RENTER OVERVIEW</p><h1>Your rental journey</h1><p>Everything you're following, booking, and discussing in one place.</p></div><Button onClick={()=>go("Discover")}><Icon name="search" /> Browse Homes</Button></div>
+    <DashboardCards state={summaryState} onOpen={onSummary} icons={["heart","calendar","settings","message"].map(name=><Icon key={name} name={name as IconName}/>)} arrow={<Icon name="chevron" size={16}/>}/>
+    <section className="quick-actions"><div className="dashboard-section-head"><div><h2>Quick actions</h2><p>Jump back into what matters</p></div></div><div className="quick-action-grid">{[["search","Browse Homes","Discover verified properties that fit your life.","Discover"],["calendar","View Bookings","Track requests, dates, and approval status.","Bookings"],["message","Message Owners","Continue conversations about your next home.","Messages"]].map(item=><button key={item[1]} onClick={()=>go(item[3])}><span><Icon name={item[0] as IconName} /></span><div><strong>{item[1]}</strong><small>{item[2]}</small></div><Icon name="arrow" size={17} /></button>)}</div></section>
+    <div className="dashboard-main-grid"><FavoritesPage compact onView={viewProperty} onLogin={()=>go("Login")} onBrowse={()=>go("Discover")}/>
+      <aside className="recent-activity"><div className="dashboard-section-head"><div><h2>Recent Activity</h2><p>Your latest updates</p></div></div><div className="activity-timeline">{notifications.length?notifications.slice(0,3).map(item=><article key={item.id}><span className={"timeline-icon "+item.tone}><Icon name={item.icon}/></span><div><strong>{item.title}</strong><p>{item.message}</p><small>{item.time}</small></div></article>):<p>No recent account updates.</p>}</div></aside></div>
+  </div>;
+}
+
+function Saved({ saved, toggleSaved, go, viewHome }: { saved: number[]; toggleSaved: (i: number) => void; go: (page: string) => void; viewHome: (i: number) => void }) {
+  const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState("Recently Added");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoading(false), 450);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const sorted = [...saved].sort((a,b)=>{
+    if (sort==="Price Low to High") return Number(homes[a].price.replace(/\D/g,""))-Number(homes[b].price.replace(/\D/g,""));
+    if (sort==="Price High to Low") return Number(homes[b].price.replace(/\D/g,""))-Number(homes[a].price.replace(/\D/g,""));
+    return b-a;
+  });
+  return <div className="favorites-page"><div className="favorites-header"><div><p className="eyebrow">YOUR COLLECTION</p><h1>My Favorite Properties</h1><p>Your saved homes are collected here.</p></div><div className="favorites-count"><Icon name="heart" /><span><strong>{saved.length}</strong><small>Saved homes</small></span></div></div>
+    <div className="favorites-toolbar"><p>{saved.length ? `${saved.length} ${saved.length===1?"property":"properties"} in your collection` : "Start building your property shortlist"}</p><label><span>Sort</span><select value={sort} onChange={e=>setSort(e.target.value)}><option>Recently Added</option><option>Price Low to High</option><option>Price High to Low</option></select></label></div>
+    {loading?<div className="favorites-grid">{Array.from({length:3}).map((_,i)=><article className="property-card skeleton-card" key={i}><div className="skeleton skeleton-image" /><div className="property-body"><div className="skeleton line wide" /><div className="skeleton line" /><div className="skeleton line short" /></div></article>)}</div>
+    : sorted.length?<div className="favorites-grid">{sorted.map(i=><div className="favorite-card-wrap" key={homes[i].title}><PropertyCard home={homes[i]} saved onSave={()=>toggleSaved(i)} onView={()=>viewHome(i)} /><button className="remove-favorite" onClick={()=>toggleSaved(i)}><Icon name="heart" size={15} /> Remove Favorite</button></div>)}</div>
+    :<EmptyState icon="heart" variant="favorites" title="You haven't saved any properties." description="Save homes you love and compare them here anytime." actionLabel="Explore Homes" onAction={()=>go("Discover")}/>}
+  </div>;
+}
+
+const initialBookings = [
+  { id: "RN-2849", home: 0, owner: "Aisha Khan", start: "2027-01-01", end: "2027-07-01", dates: "01 Jan 2027 – 01 Jul 2027", amount: "৳288,000", status: "Pending" },
+  { id: "RN-2731", home: 1, owner: "Olivia Bennett", start: "2026-09-15", end: "2027-03-15", dates: "15 Sep 2026 – 15 Mar 2027", amount: "৳219,000", status: "Approved" },
+  { id: "RN-2588", home: 3, owner: "Marcus Reed", start: "2026-06-01", end: "2026-12-01", dates: "01 Jun 2026 – 01 Dec 2026", amount: "৳192,000", status: "Confirmed" },
+  { id: "RN-2410", home: 2, owner: "Nadia Karim", start: "2026-02-01", end: "2026-05-01", dates: "01 Feb 2026 – 01 May 2026", amount: "৳72,000", status: "Rejected" },
+  { id: "RN-2295", home: 4, owner: "Tanvir Islam", start: "2025-11-01", end: "2026-02-01", dates: "01 Nov 2025 – 01 Feb 2026", amount: "৳126,000", status: "Cancelled" },
+];
+
+function Bookings({ go, viewBooking }: { go: (page: string) => void; viewBooking: (id: string) => void }) {
+  const [bookings, setBookings] = useState(initialBookings);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("");
+  const [state, setState] = useState<"loading"|"ready"|"error">("loading");
+  const [selected, setSelected] = useState<string|null>(null);
+  const [modalMode, setModalMode] = useState<"details"|"cancel">("details");
+  useEffect(()=>{const timer=window.setTimeout(()=>setState("ready"),450);return()=>window.clearTimeout(timer);},[]);
+  const visible = bookings.filter(b=>(statusFilter==="All"||b.status===statusFilter)&&(!dateFilter||b.start>=dateFilter));
+  const selectedBooking = bookings.find(b=>b.id===selected);
+  const tone = (status:string):"success"|"warning"|"danger"|"neutral" => status==="Pending"?"warning":status==="Approved"||status==="Confirmed"?"success":status==="Rejected"?"danger":"neutral";
+  const openDetails = (id:string) => viewBooking(id);
+  const openCancel = (id:string) => {setSelected(id);setModalMode("cancel");};
+  if (state==="loading") return <div className="bookings-page"><div className="dashboard-skeleton-head"><div className="skeleton line wide" /><div className="skeleton line short" /></div><div className="booking-skeleton-list">{Array.from({length:4}).map((_,i)=><div className="skeleton booking-row-skeleton" key={i} />)}</div></div>;
+  if (state==="error") return <ErrorState type="network" title="Unable to connect." description="We couldn't load your bookings. Check your connection and retry." primaryLabel="Retry" onPrimary={()=>setState("ready")}/>;
+  return <div className="bookings-page"><div className="bookings-header"><div><p className="eyebrow">RENTAL ACTIVITY</p><h1>My Bookings</h1><p>Track your rental requests and active bookings.</p></div><Button onClick={()=>go("Discover")}><Icon name="search" /> Find a Property</Button></div>
+    <div className="booking-filter-bar"><div className="status-filters">{["All","Pending","Approved","Confirmed","Rejected","Cancelled"].map(x=><button className={statusFilter===x?"active":""} onClick={()=>setStatusFilter(x)} key={x}>{x}</button>)}</div><label className="date-filter"><Icon name="calendar" size={16} /><span>Date</span><input type="date" value={dateFilter} onChange={e=>setDateFilter(e.target.value)} /></label></div>
+    {visible.length?<div className="booking-list"><div className="booking-list-head"><span>Property</span><span>Rental period</span><span>Total amount</span><span>Status</span><span>Actions</span></div>{visible.map(b=><article className="booking-row" key={b.id}><div className="booking-property"><img src={homes[b.home].image} alt="" /><div><small>{b.id}</small><strong>{homes[b.home].title}</strong><p>{homes[b.home].place.split("·")[0]} · Owner: {b.owner}</p></div></div><div className="booking-dates"><span>{b.dates.split(" – ")[0]}</span><i /><span>{b.dates.split(" – ")[1]}</span></div><strong className="booking-amount">{b.amount}<small>Total</small></strong><Badge tone={tone(b.status)}>{b.status==="Pending"?"Pending Approval":b.status}</Badge><div className="booking-actions">{b.status==="Pending"?<><Button variant="ghost" onClick={()=>openDetails(b.id)}>View Details</Button><button className="cancel-request" onClick={()=>openCancel(b.id)}>Cancel Request</button></>:<Button variant="secondary" onClick={()=>openDetails(b.id)}>{b.status==="Rejected"||b.status==="Cancelled"?"View History":"View Details"}</Button>}</div></article>)}</div>
+    :<EmptyState icon="calendar" variant="bookings" title="No bookings found." description="When you request or reserve a home, your bookings will appear here." actionLabel="Find a Property" onAction={()=>go("Discover")}/>}
+    {selectedBooking&&<div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><section className="modal booking-detail-modal" onMouseDown={e=>e.stopPropagation()}>{modalMode==="cancel"?<><div className="modal-icon danger"><Icon name="calendar" /></div><h2>Cancel booking request?</h2><p className="modal-description">Your request for {homes[selectedBooking.home].title} will be cancelled. This action can't be undone.</p><div className="modal-booking-summary"><img src={homes[selectedBooking.home].image} alt="" /><div><strong>{homes[selectedBooking.home].title}</strong><small>{selectedBooking.dates}</small></div></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setSelected(null)}>Keep Request</Button><Button variant="destructive" onClick={()=>{setBookings(list=>list.map(b=>b.id===selectedBooking.id?{...b,status:"Cancelled"}:b));setSelected(null);}}>Confirm Cancellation</Button></div></>:<><div className="modal-header"><div><p className="eyebrow">BOOKING {selectedBooking.id}</p><h2>Booking Details</h2></div><button className="icon-button" onClick={()=>setSelected(null)}>×</button></div><img className="booking-modal-image" src={homes[selectedBooking.home].image} alt="" /><h3>{homes[selectedBooking.home].title}</h3><p className="location"><Icon name="pin" size={15} />{homes[selectedBooking.home].place}</p><div className="booking-detail-grid"><span><small>OWNER</small><strong>{selectedBooking.owner}</strong></span><span><small>STATUS</small><Badge tone={tone(selectedBooking.status)}>{selectedBooking.status}</Badge></span><span><small>RENTAL PERIOD</small><strong>{selectedBooking.dates}</strong></span><span><small>TOTAL AMOUNT</small><strong>{selectedBooking.amount}</strong></span></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setSelected(null)}>Close</Button>{selectedBooking.status==="Pending"&&<Button variant="destructive" onClick={()=>setModalMode("cancel")}>Cancel Request</Button>}</div></>}</section></div>}
+  </div>;
+}
+
+function BookingDetailsPage({ booking, go, viewHome }: { booking: typeof initialBookings[0]; go: (page: string) => void; viewHome: (i: number) => void }) {
+  const [status, setStatus] = useState(booking.status);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const tone = status==="Pending"?"warning":status==="Approved"||status==="Confirmed"?"success":status==="Rejected"?"danger":"neutral";
+  const stage = status==="Confirmed"?3:status==="Approved"||status==="Rejected"||status==="Cancelled"?2:1;
+  const finalLabel = status==="Rejected"?"Rejected":status==="Cancelled"?"Cancelled":"Approved";
+  return <div className="booking-details-page"><button className="booking-back" onClick={()=>go("Bookings")}><Icon name="arrow" size={16} /> Back to Bookings</button><div className="booking-details-head"><div><p className="eyebrow">BOOKING {booking.id}</p><h1>Booking Details</h1><p>Review your property, rental dates, and current booking progress.</p></div><Badge tone={tone}>{status==="Pending"?"Pending Approval":status}</Badge></div>
+    <section className="booking-property-summary"><img src={homes[booking.home].image} alt={homes[booking.home].title} /><div><small>RENTAL PROPERTY</small><h2>{homes[booking.home].title}</h2><p><Icon name="pin" size={15} />{homes[booking.home].place}</p><div className="summary-owner"><span className="avatar">AK</span><p><small>PROPERTY OWNER</small><strong>{booking.owner}</strong></p></div></div><div className="summary-rent"><small>MONTHLY RENT</small><strong>{homes[booking.home].price}</strong><span>/ month</span><Button variant="secondary" onClick={()=>viewHome(booking.home)}>View Property</Button></div></section>
+    <section className="booking-info-section"><div className="dashboard-section-head"><div><h2>Booking Information</h2><p>Complete details for this rental request</p></div></div><div className="booking-info-grid">{[["Booking ID",booking.id,"calendar"],["Start Date",booking.dates.split(" – ")[0],"calendar"],["End Date",booking.dates.split(" – ")[1],"calendar"],["Duration","6 months","settings"],["Total Amount",booking.amount,"building"],["Payment Status",status==="Confirmed"?"Paid":"Not due","settings"]].map(item=><article key={item[0]}><span><Icon name={item[2] as IconName} /></span><div><small>{item[0]}</small><strong>{item[1]}</strong></div></article>)}<article><span><Icon name="settings" /></span><div><small>Booking Status</small><Badge tone={tone}>{status==="Pending"?"Pending Approval":status}</Badge></div></article></div></section>
+    <div className="booking-details-layout"><section className="booking-timeline-card"><div className="dashboard-section-head"><div><h2>Booking Progress</h2><p>Follow each step of your request</p></div></div><div className="status-timeline">{[["Booking Requested","Request submitted successfully"],["Owner Reviewing","The owner is reviewing your details"],[finalLabel,status==="Rejected"?"The owner declined this request":status==="Cancelled"?"This request was cancelled":"The owner approved your request"],["Confirmed","Your rental booking is finalized"]].map((item,i)=><article className={`${i<stage?"complete":i===stage?"current":""} ${status==="Rejected"&&i===2?"rejected":""}`} key={item[0]}><span>{i<stage||status==="Confirmed"&&i===3?"✓":i+1}</span><div><strong>{item[0]}</strong><p>{item[1]}</p>{i<=stage&&<small>{["12 Dec, 10:24 AM","12 Dec, 10:26 AM","Pending update","After owner approval"][i]}</small>}</div></article>)}</div></section>
+      <aside className="booking-owner-card"><div className="owner-contact-head"><span className="owner-avatar">AK</span><div><small>PROPERTY OWNER</small><h3>{booking.owner}</h3><p>Usually responds within an hour</p></div><i /></div><div className="owner-contact-meta"><span><Icon name="star" size={14} /> 4.9 owner rating</span><span><Icon name="settings" size={14} /> Identity verified</span></div><Button variant="secondary" onClick={()=>go("Messages")}><Icon name="message" /> Message Owner</Button><div className="booking-page-actions">{status==="Pending"?<Button variant="destructive" onClick={()=>setCancelOpen(true)}>Cancel Booking</Button>:status==="Approved"?<Button onClick={()=>go("Messages")}>Message Owner</Button>:status==="Confirmed"?<Button onClick={()=>viewHome(booking.home)}>View Property Details</Button>:<Button variant="secondary" onClick={()=>go("Bookings")}>View Booking History</Button>}</div></aside></div>
+    {cancelOpen&&<ConfirmationModal type="cancel" title="Cancel this booking?" description="The property owner will be notified. This action cannot be undone." cancelLabel="Keep Booking" confirmLabel="Cancel Booking" onCancel={()=>setCancelOpen(false)} onConfirm={()=>{setStatus("Cancelled");setCancelOpen(false);}}><div className="cancel-booking-context"><img src={homes[booking.home].image} alt=""/><div><small>PROPERTY</small><strong>{homes[booking.home].title}</strong><span>{booking.start} – {booking.end}</span></div><b>Cancellation may affect future booking eligibility.</b></div></ConfirmationModal>}
+  </div>;
+}
+
+function Messages({ viewHome, ownerMode = false, go }: { viewHome: (i: number) => void; ownerMode?: boolean; go?: (page:string)=>void }) {
+  const renterConversations = [
+    { owner:"Farah Ahmed", initials:"FA", role:"Renter", home:0, preview:"Thank you, I can send the documents today.", time:"10:42 AM", unread:2, blocked:false },
+    { owner:"Rafi Islam", initials:"RI", role:"Renter", home:1, preview:"Would Saturday morning work for a viewing?", time:"Yesterday", unread:1, blocked:false },
+    { owner:"Nusrat Jahan", initials:"NJ", role:"Renter", home:0, preview:"No messages yet", time:"Mon", unread:0, blocked:false },
+    { owner:"Mahmud Hasan", initials:"MH", role:"Renter", home:3, preview:"Conversation unavailable", time:"12 Dec", unread:0, blocked:true },
+  ];
+  const ownerConversations = [
+    { owner:"Olivia Bennett", initials:"OB", role:"Owner", home:0, preview:"That sounds perfect, thank you!", time:"10:42 AM", unread:2, blocked:false },
+    { owner:"Marcus Reed", initials:"MR", role:"Owner", home:3, preview:"The viewing is available on Friday.", time:"Yesterday", unread:0, blocked:false },
+    { owner:"Nadia Karim", initials:"NK", role:"Owner", home:2, preview:"No messages yet", time:"Mon", unread:0, blocked:false },
+    { owner:"Rashed Karim", initials:"RK", role:"Owner", home:4, preview:"Conversation unavailable", time:"12 Dec", unread:0, blocked:true },
+  ];
+  const conversations = ownerMode?renterConversations:ownerConversations;
+  const [active, setActive] = useState<number|null>(0);
+  const [draft, setDraft] = useState("");
+  const [query,setQuery] = useState("");
+  const [loading,setLoading] = useState(true);
+  const [unread,setUnread] = useState<Record<number,number>>({0:2,1:ownerMode?1:0,2:0,3:0});
+  const [messages, setMessages] = useState<Record<number,{from:"me"|"them";text:string;time:string;status?:"Sent"|"Delivered"|"Read"}[]>>({
+    0:ownerMode?[{from:"them",text:"Hello, I would love to rent the Gulshan apartment from January. Is there anything else you need from me?",time:"10:31 AM"},{from:"me",text:"Hi Farah! Your application looks great. Please send a copy of your employment letter when convenient.",time:"10:38 AM",status:"Read"},{from:"them",text:"Thank you, I can send the documents today.",time:"10:42 AM"}]:[{from:"them",text:"Hello, thanks for your interest in the Gulshan apartment. Is there anything you'd like to know?",time:"10:31 AM"},{from:"me",text:"Hi Olivia! Is the apartment available for a six-month lease from June?",time:"10:38 AM",status:"Read"},{from:"them",text:"It is! That sounds perfect, thank you.",time:"10:42 AM"}],
+    1:ownerMode?[{from:"them",text:"Hello, I am interested in the garden flat. Could I visit it this weekend?",time:"Yesterday, 2:15 PM"},{from:"me",text:"Of course. Saturday morning is currently available.",time:"Yesterday, 2:22 PM",status:"Delivered"},{from:"them",text:"Would Saturday morning work for a viewing?",time:"Yesterday, 2:25 PM"}]:[{from:"me",text:"Hello Marcus, would it be possible to arrange a viewing this week?",time:"Yesterday, 2:15 PM",status:"Read"},{from:"them",text:"The viewing is available on Friday. Would 4 PM work for you?",time:"Yesterday, 2:22 PM"}],
+    2:[],3:[],
+  });
+  useEffect(()=>{const timer=window.setTimeout(()=>setLoading(false),350);return()=>window.clearTimeout(timer);},[]);
+  const selectConversation=(index:number)=>{setActive(index);setUnread(current=>({...current,[index]:0}));};
+  const send = () => {
+    if (active===null||!draft.trim()||conversations[active].blocked) return;
+    const conversationIndex=active;
+    setMessages(current=>({...current,[conversationIndex]:[...(current[conversationIndex]||[]),{from:"me",text:draft.trim(),time:"Just now",status:"Sent"}]}));
+    setDraft("");
+    window.setTimeout(()=>setMessages(current=>({...current,[conversationIndex]:(current[conversationIndex]||[]).map((message,index,array)=>index===array.length-1&&message.from==="me"?{...message,status:"Delivered"}:message)})),650);
+    window.setTimeout(()=>setMessages(current=>({...current,[conversationIndex]:(current[conversationIndex]||[]).map((message,index,array)=>index===array.length-1&&message.from==="me"?{...message,status:"Read"}:message)})),1500);
+  };
+  const current = active===null?null:conversations[active];
+  const filtered=conversations.map((conversation,index)=>({conversation,index})).filter(item=>`${item.conversation.owner} ${homes[item.conversation.home].title}`.toLowerCase().includes(query.toLowerCase()));
+  const unreadTotal=Object.values(unread).reduce((sum,value)=>sum+value,0);
+  return <div className={`messages-page global-messaging-page ${ownerMode?"owner-messages-page":""}`}><div className="messages-page-head"><div><p className="eyebrow">{ownerMode?"OWNER COMMUNICATIONS":"RENTER MESSAGES"}</p><h1>Messages</h1><p>{ownerMode?"Manage renter conversations for all of your properties.":"Keep every property conversation in one secure place."}</p></div><Badge tone={unreadTotal?"warning":"neutral"}>{unreadTotal?`${unreadTotal} unread`:`${conversations.length} conversations`}</Badge></div>{loading?<div className="messages message-loading"><aside><div className="skeleton loading-title" />{[0,1,2,3].map(i=><div className="loading-conversation" key={i}><span className="skeleton" /><div><i className="skeleton" /><i className="skeleton" /><i className="skeleton" /></div></div>)}</aside><section><span className="skeleton loading-chat-title" /><div className="skeleton loading-bubble one" /><div className="skeleton loading-bubble two" /><div className="skeleton loading-bubble three" /></section></div>:<div className={`messages ${active===null?"no-active":""}`}>
+    <aside className="conversation-list"><div className="conversation-title"><strong>Conversations</strong><button className="icon-button"><Icon name="more" /></button></div><div className="message-search"><Icon name="search" /><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search conversations" /></div>
+      {!conversations.length?<EmptyState icon="message" variant="messages" compact title="No conversations yet." description="Start a conversation with an owner about a property." actionLabel="Browse Properties" onAction={()=>go?.("Discover")}/>:<>{filtered.map(({conversation,index})=><button className={`conversation ${active===index?"active":""} ${conversation.blocked?"blocked":""}`} onClick={()=>selectConversation(index)} key={conversation.owner}><span className="conversation-avatar"><span className="avatar">{conversation.initials}</span>{!conversation.blocked&&<i />}</span><span className="conversation-copy"><span><strong>{conversation.owner}</strong><time>{conversation.time}</time></span><span className={`conversation-role role-badge ${conversation.role.toLowerCase()}`}>{conversation.role}</span><b><img src={homes[conversation.home].image} alt="" />{homes[conversation.home].title}</b><small>{conversation.preview}</small></span>{unread[index]>0&&<em>{unread[index]}</em>}</button>)}
+      {!filtered.length&&<div className="conversation-search-empty"><Icon name="search"/><strong>No conversations found</strong></div>}</>}
+    </aside>
+    {current?<section className="chat"><div className="chat-header"><button className="mobile-chat-back" onClick={()=>setActive(null)}><Icon name="arrow" size={16} /></button><span className="avatar">{current.initials}</span><div><strong>{current.owner}</strong><small>{current.blocked?"Unavailable":<><i /> Online</>} · <span className={`role-badge ${current.role.toLowerCase()}`}>{current.role}</span></small></div><button className="icon-button desktop-close-chat" onClick={()=>setActive(null)} aria-label="Close conversation">×</button></div>
+      <div className="chat-property-bar"><img src={homes[current.home].image} alt="" /><div><small>RELATED PROPERTY</small><strong>{homes[current.home].title}</strong><span>{homes[current.home].price} / month · {homes[current.home].place.split("·")[0]}</span></div><Button variant="secondary" onClick={()=>ownerMode?go?.("Owner listings"):viewHome(current.home)}>View Property</Button></div>
+      <div className="thread"><p className="date">TODAY</p>{current.blocked?<div className="blocked-conversation"><span><Icon name="lock" size={25}/></span><h3>This conversation is unavailable.</h3><p>Messaging has been disabled for this conversation. Contact RentNest support if you need assistance.</p></div>:messages[active!].length?messages[active!].map((message,i)=><div className={`message-wrap ${message.from}`} key={`${message.time}-${i}`}><div className={`bubble ${message.from==="me"?"mine":"theirs"}`}>{message.text}</div><div className="message-meta"><time>{message.time}</time>{message.from==="me"&&<span className={`message-status ${message.status?.toLowerCase()}`}>✓{message.status==="Read"&&"✓"} {message.status}</span>}</div></div>):<div className="no-messages"><span><Icon name="message" size={26} /></span><h3>No messages yet.</h3><p>Start the conversation.</p></div>}</div>
+      {!current.blocked&&<><div className="typing-indicator">{active===0&&<><span>{current.owner.split(" ")[0]} is online</span><i /></>}</div><form className="composer" onSubmit={e=>{e.preventDefault();send();}}><button type="button" className="icon-button" aria-label="Attach file"><Icon name="paperclip" /></button><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Write a message..." /><Button disabled={!draft.trim()}>Send <Icon name="arrow" /></Button></form></>}
+    </section>:<section className="chat-empty"><span><Icon name="message" size={32} /></span><h2>Select a conversation to start messaging</h2><p>Choose a property conversation from the list to view messages.</p></section>}
+  </div>}</div>;
+}
+
+type AppNotification = { id:number; icon:IconName; title:string; message:string; time:string; read:boolean; tone:"success"|"warning"|"brand"|"neutral"; category:"Booking"|"Messages"|"Listings" };
+
+function NotificationsPage({ go, notifications, setNotifications, dashboardPage }: { go:(page:string)=>void; notifications:AppNotification[]; setNotifications:Dispatch<SetStateAction<AppNotification[]>>; dashboardPage:string }) {
+  type NotificationFilter="All"|"Unread"|"Booking"|"Messages"|"Listings";
+  const [filter, setFilter] = useState<NotificationFilter>("All");
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{const timer=window.setTimeout(()=>setLoading(false),320);return()=>window.clearTimeout(timer);},[]);
+  const visible = notifications.filter(item=>filter==="All"||(filter==="Unread"&&!item.read)||item.category===filter);
+  const unread = notifications.filter(item=>!item.read).length;
+  const markAll = () => setNotifications(items=>items.map(item=>({...item,read:true})));
+  const markRead=(id:number)=>setNotifications(items=>items.map(item=>item.id===id?{...item,read:true}:item));
+  if(loading)return <div className="notification-center"><div className="notification-center-head"><div><p className="eyebrow">ACCOUNT UPDATES</p><h1>Notifications</h1><p>Loading your latest updates.</p></div></div><div className="notification-list notification-loading-list">{[0,1,2,3,4].map(index=><NotificationSkeleton key={index}/>)}</div></div>;
+  return <div className="notification-center"><div className="notification-center-head"><div><p className="eyebrow">ACCOUNT UPDATES</p><h1>Notifications</h1><p>Stay informed about bookings, messages, and property activity.</p></div><Button variant="secondary" onClick={markAll} disabled={!unread}><span className="button-check">✓</span> Mark all as read</Button></div>
+    <div className="notification-toolbar"><div className="notification-tabs">{(["All","Unread","Booking","Messages","Listings"] as NotificationFilter[]).map(value=><button className={filter===value?"active":""} onClick={()=>setFilter(value)} key={value}>{value} <span>{value==="All"?notifications.length:value==="Unread"?unread:notifications.filter(item=>item.category===value).length}</span></button>)}</div>{unread>0&&<p><i /> {unread} unread {unread===1?"notification":"notifications"}</p>}</div>
+    {visible.length?<div className="notification-list"><div className="notification-list-label">{filter==="Unread"?"UNREAD UPDATES":filter==="All"?"RECENT UPDATES":`${filter.toUpperCase()} UPDATES`}</div>{visible.map(item=><article className={`notification-item ${item.read?"read":"unread"}`} key={item.id} onClick={()=>markRead(item.id)}><span className={`notification-type ${item.tone}`}><Icon name={item.icon} /></span><div><span className="notification-category">{item.category}</span><strong>{item.title}</strong><p>{item.message}</p><time>{item.time}</time></div>{!item.read&&<i className="unread-dot" />}<button className="icon-button" aria-label="Notification options"><Icon name="more" /></button></article>)}</div>
+    :<EmptyState icon="bell" variant="notifications" title="No notifications yet." description={filter==="Unread"?"You're all caught up. New updates will appear here.":"Important account and platform updates will appear here."} actionLabel="Return to Dashboard" onAction={()=>go(dashboardPage)}/>}
+  </div>;
+}
+
+function Owner({ go, viewHome, editHome }: { go: (page:string)=>void; viewHome: (i:number)=>void; editHome: (i:number)=>void }) {
+  const [properties, setProperties] = useState([{home:0,status:"Approved"},{home:1,status:"Pending"},{home:2,status:"Rejected"}]);
+  const [requests,setRequests]=useState<import("./services/rentals").Booking[]>([]);
+  const [requestError,setRequestError]=useState("");
+  useEffect(()=>{const controller=new AbortController();rentalService.bookings(controller.signal).then(result=>{if(!controller.signal.aborted)setRequests(result.bookings)}).catch(error=>{if(!controller.signal.aborted)setRequestError(error.message)});return()=>controller.abort();},[]);
+  const [deleteHome, setDeleteHome] = useState<number|null>(null);
+  return <div className="owner-dashboard"><div className="owner-page-head"><div><p className="eyebrow">PROPERTY OWNER OVERVIEW</p><h1>Your rental business</h1><p>Monitor performance, manage properties, and respond to renters.</p></div><Button onClick={()=>go("Owner add property")}><Icon name="plus" /> Add New Property</Button></div>
+    <section className="owner-summary">{[["building","TOTAL LISTINGS","12","Properties","+2 this month"],["calendar","ACTIVE BOOKINGS","8","Current Rentals","Across 6 properties"],["users","PENDING REQUESTS","5","Waiting Approval","Needs your review"],["star","MONTHLY EARNINGS","৳85,000","","↑ 12.5% this month"]].map((item,i)=><article key={item[1]}><div><span className={`owner-stat-icon owner-stat-${i}`}><Icon name={item[0] as IconName} /></span><small>{item[1]}</small></div><strong>{item[2]}</strong><p>{item[3]}</p><em>{item[4]}</em></article>)}</section>
+    <section className="owner-quick"><div className="owner-section-head"><div><h2>Quick Actions</h2><p>Common property management tasks</p></div></div><div>{[["plus","Add New Property","Create and submit a new listing"],["building","Manage Listings","Edit availability and property details"],["calendar","View Requests","Review pending booking requests"],["message","Messages","Reply to prospective renters"]].map((item,i)=><button key={item[1]} onClick={()=>i===0?go("Owner add property"):i===1?go("Owner listings"):i===2?go("Owner booking requests"):go("Owner messages")}><span><Icon name={item[0] as IconName} /></span><div><strong>{item[1]}</strong><small>{item[2]}</small></div><Icon name="arrow" size={16} /></button>)}</div></section>
+    <div className="owner-dashboard-grid"><section className="owner-properties-section"><div className="owner-section-head"><div><h2>Your Properties</h2><p>Recently updated listings</p></div><Button variant="ghost" onClick={()=>go("Owner listings")}>Manage Listings <Icon name="arrow" /></Button></div>{properties.length?<div className="owner-property-grid">{properties.map(item=>{const home=homes[item.home];return <article className="owner-property-card" key={home.title}><div className="owner-property-image"><img src={home.image} alt="" /><Badge tone={item.status==="Approved"?"success":item.status==="Pending"?"warning":"danger"}>{item.status}</Badge></div><div><h3>{home.title}</h3><p><Icon name="pin" size={14} />{home.place}</p><strong>{home.price}<small> / month</small></strong><div className="owner-property-actions"><button onClick={()=>editHome(item.home)}><Icon name="settings" size={15} /> Edit</button><button onClick={()=>viewHome(item.home)}><Icon name="eye" size={15} /> View</button><button className="delete" onClick={()=>setDeleteHome(item.home)}><Icon name="logout" size={15} /> Delete</button></div></div></article>})}</div>:<EmptyState icon="building" variant="listings" compact title="You haven't created any listings." description="Create your first listing and reach verified renters." actionLabel="Create Listing" onAction={()=>go("Owner add property")}/>}</section>
+      <aside className="owner-activity-card"><div className="owner-section-head"><div><h2>Activity Feed</h2><p>Latest business updates</p></div></div><div className="owner-feed">{[["building","Your listing was approved","Modern Apartment in Gulshan","12 min ago","success"],["calendar","New booking request received","Farah requested a 6-month stay","38 min ago","brand"],["message","New message from renter","Rafi asked about parking","2 hours ago","neutral"]].map(item=><article key={item[1]}><span className={item[4]}><Icon name={item[0] as IconName} /></span><div><strong>{item[1]}</strong><p>{item[2]}</p><small>{item[3]}</small></div></article>)}</div></aside></div>
+    <section className="owner-requests"><div className="owner-section-head"><div><h2>Recent Booking Requests</h2><p>Review the latest renter requests</p></div><Button variant="ghost" onClick={()=>go("Owner booking requests")}>View All Requests <Icon name="arrow" /></Button></div>{requestError?<p role="alert">{requestError}</p>:requests.length?<div className="owner-request-list">{requests.slice(0,5).map(request=><article key={request.id}><span className="avatar">{request.renterName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()}</span><div className="request-renter"><strong>{request.renterName}</strong><small>{request.startDate} to {request.endDate}</small></div><div className="request-property"><span>{request.title}</span></div><Badge tone={request.status==="approved"?"success":request.status==="rejected"?"danger":"warning"}>{request.status}</Badge><Button variant="secondary" onClick={()=>go("Owner booking requests")}>Review request</Button></article>)}</div>:<p>No booking requests yet.</p>}</section>
+    {deleteHome!==null&&<ConfirmationModal type="delete" title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" onCancel={()=>setDeleteHome(null)} onConfirm={()=>{setProperties(items=>items.filter(item=>item.home!==deleteHome));setDeleteHome(null);}}><div className="confirmation-property"><img src={homes[deleteHome].image} alt=""/><div><small>PROPERTY</small><strong>{homes[deleteHome].title}</strong><span>{homes[deleteHome].place}</span></div></div></ConfirmationModal>}
+  </div>;
+}
+
+function OwnerListingsPage({ viewHome, editHome, go }: { viewHome: (i:number)=>void; editHome: (i:number)=>void; go: (page:string)=>void }) {
+  const seed = [
+    {id:101,home:0,type:"Apartment",status:"Approved"},{id:102,home:1,type:"Flat",status:"Pending Approval"},{id:103,home:2,type:"Room",status:"Rejected"},
+    {id:104,home:3,type:"Apartment",status:"Approved"},{id:105,home:4,type:"Office",status:"Draft"},{id:106,home:5,type:"Parking",status:"Approved"},
+  ];
+  const [listings,setListings] = useState(seed);
+  const [status,setStatus] = useState("All");
+  const [type,setType] = useState("All Types");
+  const [view,setView] = useState<"table"|"grid">("table");
+  const [deleteId,setDeleteId] = useState<number|null>(null);
+  const visible = listings.filter(item=>(status==="All"||item.status===status)&&(type==="All Types"||item.type===type));
+  const statusTone = (value:string):"success"|"warning"|"danger"|"neutral" => value==="Approved"?"success":value==="Pending Approval"?"warning":value==="Rejected"?"danger":"neutral";
+  const statusDescription = (value:string) => value==="Approved"?"Visible publicly":value==="Pending Approval"?"Waiting for admin review":value==="Rejected"?"Needs correction":"Not published";
+  const duplicate = (id:number) => {const source=listings.find(item=>item.id===id);if(source)setListings(items=>[{...source,id:Date.now(),status:"Draft"},...items]);};
+  const addDraft = () => setListings(items=>[{id:Date.now(),home:5,type:"Apartment",status:"Draft"},...items]);
+  return <div className="owner-listings-page"><div className="owner-listings-head"><div><p className="eyebrow">PROPERTY MANAGEMENT</p><h1>My Listings</h1><p>Manage your rental properties.</p></div><Button onClick={()=>go("Owner add property")}><Icon name="plus" /> Add New Property</Button></div>
+    <div className="listing-toolbar"><div className="listing-filters"><label><span>Status</span><select value={status} onChange={e=>setStatus(e.target.value)}>{["All","Pending Approval","Approved","Rejected","Draft"].map(x=><option key={x}>{x}</option>)}</select></label><label><span>Property Type</span><select value={type} onChange={e=>setType(e.target.value)}>{["All Types","Room","Flat","Apartment","Office","Parking"].map(x=><option key={x}>{x}</option>)}</select></label></div><div className="view-switch"><button className={view==="table"?"active":""} onClick={()=>setView("table")}><Icon name="more" size={16} /> Table</button><button className={view==="grid"?"active":""} onClick={()=>setView("grid")}><Icon name="building" size={16} /> Grid</button></div></div>
+    {visible.length ? view==="table"?<div className="listings-table"><div className="listings-table-head"><span>Property</span><span>Type</span><span>Price / month</span><span>Size</span><span>Status</span><span>Actions</span></div>{visible.map(item=>{const home=homes[item.home];return <article key={item.id}><div className="listing-property-cell"><img src={home.image} alt="" /><div><strong>{home.title}{item.id>1000?" (Copy)":""}</strong><small><Icon name="pin" size={12} />{home.place.split("·")[0]}</small></div></div><span className="listing-type">{item.type}</span><strong className="listing-price">{home.price}</strong><span className="listing-size">{home.meta.split("·").pop()?.trim()}</span><div className="listing-status"><Badge tone={statusTone(item.status)}>{item.status}</Badge><small>{statusDescription(item.status)}</small></div><div className="listing-row-actions"><button onClick={()=>editHome(item.home)}><Icon name="settings" size={14} /><span>Edit Listing</span></button><button onClick={()=>viewHome(item.home)}><Icon name="eye" size={14} /><span>View Details</span></button><button onClick={()=>duplicate(item.id)}><Icon name="plus" size={14} /><span>Duplicate Listing</span></button><button className="delete" onClick={()=>setDeleteId(item.id)}><Icon name="logout" size={14} /><span>Delete Listing</span></button></div></article>})}</div>
+      :<div className="owner-listing-grid">{visible.map(item=>{const home=homes[item.home];return <article key={item.id}><div className="listing-grid-image"><img src={home.image} alt="" /><Badge tone={statusTone(item.status)}>{item.status}</Badge></div><div className="listing-grid-body"><small>{item.type} · {home.meta.split("·").pop()?.trim()}</small><h3>{home.title}{item.id>1000?" (Copy)":""}</h3><p><Icon name="pin" size={13} />{home.place.split("·")[0]}</p><strong>{home.price}<span> / month</span></strong><div><button onClick={()=>editHome(item.home)}><Icon name="settings" /> Edit</button><button onClick={()=>viewHome(item.home)}><Icon name="eye" /> View</button><button onClick={()=>duplicate(item.id)}><Icon name="plus" /> Duplicate</button><button className="delete" onClick={()=>setDeleteId(item.id)}><Icon name="logout" /> Delete</button></div></div></article>})}</div>
+    :<EmptyState icon="building" variant="listings" title="You haven't created any listings." description="Create your first listing and start connecting with verified renters." actionLabel="Create Listing" onAction={addDraft}/>}
+    {deleteId!==null&&<div className="modal-backdrop" onMouseDown={()=>setDeleteId(null)}><section className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modal-icon danger"><Icon name="building" /></div><h2>Delete this listing?</h2><p className="modal-description">This property will be removed permanently and will no longer appear to renters.</p><div className="modal-actions"><Button variant="secondary" onClick={()=>setDeleteId(null)}>Cancel</Button><Button variant="destructive" onClick={()=>{setListings(items=>items.filter(item=>item.id!==deleteId));setDeleteId(null);}}>Delete Listing</Button></div></section></div>}
+  </div>;
+}
+
+function AddPropertyWizard({ go }: { go: (page:string)=>void }) {
+  const steps = ["Basic Information","Property Details","Amenities","Photos","Preview & Submit"];
+  const [step,setStep] = useState(0);
+  const [fields,setFields] = useState<Record<string,string|boolean>>({title:"",location:"",type:"Apartment",description:"",rent:"",deposit:"",size:"",bedrooms:"",bathrooms:"",furnished:"Yes",bachelor:true,family:true});
+  const [amenities,setAmenities] = useState<string[]>([]);
+  const [photos,setPhotos] = useState<string[]>([]);
+  const [primary,setPrimary] = useState(0);
+  const [attempted,setAttempted] = useState(false);
+  const [uploading,setUploading] = useState(false);
+  const [draftSaved,setDraftSaved] = useState(false);
+  const [submitted,setSubmitted] = useState(false);
+  const [saving,setSaving] = useState(false);
+  const setField = (key:string,value:string|boolean) => setFields(current=>({...current,[key]:value}));
+  const valid = step===0 ? fields.title&&fields.location&&fields.description : step===1 ? fields.rent&&fields.size&&fields.bedrooms&&fields.bathrooms : step===3 ? photos.length>0 : true;
+  const next = () => {setAttempted(true);if(valid){setStep(current=>Math.min(current+1,4));setAttempted(false);}};
+  const addPhotos = () => {setUploading(true);window.setTimeout(()=>{setPhotos([homes[0].image,homes[1].image,homes[3].image]);setPrimary(0);setUploading(false);},850);};
+  const movePhoto = (index:number,direction:number) => {const target=index+direction;if(target<0||target>=photos.length)return;setPhotos(items=>{const copy=[...items];[copy[index],copy[target]]=[copy[target],copy[index]];return copy;});if(primary===index)setPrimary(target);else if(primary===target)setPrimary(index);};
+  if(submitted) return <div className="wizard-success"><div className="wizard-success-icon"><Icon name="building" size={34} /><span>✓</span></div><p className="eyebrow">SUBMISSION COMPLETE</p><h1>Your property has been submitted.</h1><p>Your listing is now in the moderation queue. We'll notify you as soon as an administrator reviews it.</p><div className="pending-approval-card"><Badge tone="warning">Pending Admin Approval</Badge><span>Most listings are reviewed within 24–48 hours.</span></div><div><Button variant="secondary" onClick={()=>go("Owner workspace")}>Back to Dashboard</Button><Button onClick={()=>go("Owner listings")}>View My Listings <Icon name="arrow" /></Button></div></div>;
+  return <div className="property-wizard"><div className="wizard-head"><div><button className="wizard-back" onClick={()=>step?setStep(step-1):go("Owner listings")}><Icon name="arrow" size={15} /> {step?"Previous step":"Back to listings"}</button><p className="eyebrow">CREATE PROPERTY LISTING</p><h1>Add New Property</h1><p>Build a complete listing in a few guided steps.</p></div><Button variant="secondary" onClick={()=>{setDraftSaved(true);window.setTimeout(()=>setDraftSaved(false),1700);}}>{draftSaved?"✓ Draft saved":"Save as Draft"}</Button></div>
+    <div className="wizard-progress">{steps.map((label,i)=><div className={`${i===step?"active":""} ${i<step?"complete":""}`} key={label}><span>{i<step?"✓":i+1}</span><p><small>STEP {i+1}</small><strong>{label}</strong></p>{i<steps.length-1&&<i />}</div>)}</div>
+    <div className="wizard-card"><div className="wizard-card-head"><span>0{step+1}</span><div><h2>{steps[step]}</h2><p>{["Tell renters where the property is and what makes it special.","Add pricing, space, and occupancy details.","Select everything renters can expect at the property.","Upload clear images and choose the primary listing photo.","Review the complete listing before sending it for approval."][step]}</p></div></div>
+      {step===0&&<div className="wizard-form"><label className={attempted&&!fields.title?"invalid":""}><span>Property Title</span><input value={fields.title as string} onChange={e=>setField("title",e.target.value)} placeholder="e.g. Modern Apartment in Gulshan" />{attempted&&!fields.title&&<small>Property title is required</small>}</label><label className={attempted&&!fields.location?"invalid":""}><span>Location</span><input value={fields.location as string} onChange={e=>setField("location",e.target.value)} placeholder="Area, city" />{attempted&&!fields.location&&<small>Location is required</small>}</label><label><span>Property Type</span><select value={fields.type as string} onChange={e=>setField("type",e.target.value)}>{["Room","Flat","Apartment","Office Area","Parking"].map(x=><option key={x}>{x}</option>)}</select></label><label className={`wide ${attempted&&!fields.description?"invalid":""}`}><span>Description</span><textarea value={fields.description as string} onChange={e=>setField("description",e.target.value)} placeholder="Describe the property, neighborhood, and ideal renter..." />{attempted&&!fields.description&&<small>Description is required</small>}</label></div>}
+      {step===1&&<div className="wizard-form details-form"><label className={attempted&&!fields.rent?"invalid":""}><span>Monthly Rent</span><div className="prefixed-input"><b>৳</b><input value={fields.rent as string} onChange={e=>setField("rent",e.target.value)} placeholder="25,000" /></div>{attempted&&!fields.rent&&<small>Monthly rent is required</small>}</label><label><span>Security Deposit</span><div className="prefixed-input"><b>৳</b><input value={fields.deposit as string} onChange={e=>setField("deposit",e.target.value)} placeholder="Optional" /></div></label><label className={attempted&&!fields.size?"invalid":""}><span>Size</span><div className="suffixed-input"><input value={fields.size as string} onChange={e=>setField("size",e.target.value)} placeholder="1,200" /><b>sqft</b></div></label><label className={attempted&&!fields.bedrooms?"invalid":""}><span>Bedrooms</span><input type="number" value={fields.bedrooms as string} onChange={e=>setField("bedrooms",e.target.value)} placeholder="2" /></label><label className={attempted&&!fields.bathrooms?"invalid":""}><span>Bathrooms</span><input type="number" value={fields.bathrooms as string} onChange={e=>setField("bathrooms",e.target.value)} placeholder="2" /></label><fieldset><legend>Furnished</legend><div className="wizard-choice">{["Yes","No"].map(x=><button type="button" className={fields.furnished===x?"selected":""} onClick={()=>setField("furnished",x)} key={x}>{x}</button>)}</div></fieldset><fieldset className="wide"><legend>Allowed Tenants</legend><div className="allowed-options"><label><input type="checkbox" checked={fields.bachelor as boolean} onChange={e=>setField("bachelor",e.target.checked)} /> Bachelor Allowed</label><label><input type="checkbox" checked={fields.family as boolean} onChange={e=>setField("family",e.target.checked)} /> Family Allowed</label></div></fieldset></div>}
+      {step===2&&<div className="amenity-selector">{[["search","WiFi"],["building","Parking"],["arrow","Lift"],["settings","Security"],["heart","Pets Allowed"]].map(item=><button className={amenities.includes(item[1])?"selected":""} onClick={()=>setAmenities(current=>current.includes(item[1])?current.filter(x=>x!==item[1]):[...current,item[1]])} key={item[1]}><span><Icon name={item[0] as IconName} /></span><strong>{item[1]}</strong><i>{amenities.includes(item[1])?"✓":"+"}</i></button>)}</div>}
+      {step===3&&<div className="photo-step"><label className={`photo-uploader ${attempted&&!photos.length?"invalid":""}`} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();addPhotos();}}><input type="file" multiple accept="image/*" onChange={addPhotos} /><span><Icon name="plus" size={25} /></span><strong>Drag and drop property photos</strong><p>or click to browse · JPG or PNG · Up to 10 images</p></label>{uploading&&<div className="upload-progress"><i /><div><strong>Uploading images...</strong><span><b /></span></div><small>68%</small></div>}{!uploading&&photos.length>0&&<div className="photo-preview-grid">{photos.map((photo,i)=><article className={primary===i?"primary":""} key={photo}><img src={photo} alt={`Property upload ${i+1}`} />{primary===i&&<Badge>Primary photo</Badge>}<div><button onClick={()=>movePhoto(i,-1)}>←</button><button onClick={()=>setPrimary(i)}>Set primary</button><button onClick={()=>movePhoto(i,1)}>→</button><button className="delete" onClick={()=>setPhotos(items=>items.filter((_,index)=>index!==i))}>×</button></div></article>)}</div>}{attempted&&!photos.length&&!uploading&&<p className="upload-error">Add at least one property photo to continue.</p>}</div>}
+      {step===4&&<div className="listing-preview"><div className="preview-gallery">{photos.length?<img src={photos[primary]} alt="" />:<div><Icon name="building" /></div>}<Badge tone="warning">Pending Approval</Badge></div><div className="preview-content"><p className="eyebrow">{fields.type as string || "PROPERTY"}</p><h2>{fields.title as string || "Untitled property"}</h2><p className="location"><Icon name="pin" size={15} />{fields.location as string || "Location not provided"}</p><strong>৳{fields.rent as string || "0"} <small>/ month</small></strong><div className="preview-stats"><span>{fields.bedrooms as string || "0"} Beds</span><span>{fields.bathrooms as string || "0"} Baths</span><span>{fields.size as string || "0"} sqft</span><span>{fields.furnished as string==="Yes"?"Furnished":"Unfurnished"}</span></div><h3>About this property</h3><p>{fields.description as string || "No description provided."}</p><h3>Amenities</h3><div className="preview-amenities">{amenities.length?amenities.map(x=><span key={x}>✓ {x}</span>):<small>No amenities selected</small>}</div></div></div>}
+      <div className="wizard-actions"><Button variant="secondary" onClick={()=>step?setStep(step-1):go("Owner listings")}>{step?"Back":"Cancel"}</Button>{step<4?<Button onClick={next}>Continue <Icon name="arrow" /></Button>:<LoadingButton loading={saving} loadingText="Saving..." onClick={()=>{setSaving(true);window.setTimeout(()=>{setSaving(false);setSubmitted(true);},900);}}>Save Listing <Icon name="arrow" /></LoadingButton>}</div>
     </div>
-  )
+  </div>;
+}
+
+function EditPropertyPage({ home, go }: { home: typeof homes[0]; go: (page:string)=>void }) {
+  const original = {title:home.title,location:home.place.split("·")[0].trim(),type:home.place.split("·")[1]?.trim()||"Apartment",price:home.price.replace(/[^\d]/g,""),deposit:"50000",size:home.meta.split("·").pop()?.replace(/[^\d]/g,"")||"1200",bedrooms:home.meta.match(/\d+/)?.[0]||"2",bathrooms:"2"};
+  const [fields,setFields] = useState(original);
+  const [open,setOpen] = useState({basic:true,details:true,amenities:true,photos:true});
+  const [amenities,setAmenities] = useState(["WiFi","Parking","Security","Lift"]);
+  const [photos,setPhotos] = useState([home.image,homes[1].image,homes[3].image]);
+  const [primary,setPrimary] = useState(0);
+  const [confirmOpen,setConfirmOpen] = useState(false);
+  const [saved,setSaved] = useState(false);
+  const setField = (key:keyof typeof fields,value:string) => setFields(current=>({...current,[key]:value}));
+  const importantChanged = fields.title!==original.title||fields.location!==original.location||fields.type!==original.type||fields.price!==original.price;
+  const save = () => importantChanged?setConfirmOpen(true):(setSaved(true),window.setTimeout(()=>setSaved(false),1800));
+  const toggleSection = (key:keyof typeof open) => setOpen(current=>({...current,[key]:!current[key]}));
+  return <div className="edit-property-page"><div className="edit-property-head"><div><button onClick={()=>go("Owner listings")}><Icon name="arrow" size={15} /> Back to Listings</button><p className="eyebrow">PROPERTY MANAGEMENT</p><h1>Edit Property</h1><p>Update listing details, amenities, and property photos.</p></div><div><Badge tone="success">Approved</Badge><small>Last saved 2 hours ago</small></div></div>
+    {saved&&<div className="edit-save-toast"><span>✓</span><div><strong>Changes saved</strong><p>Your property listing has been updated.</p></div></div>}
+    <div className="edit-sections">
+      <section className={`edit-card ${open.basic?"open":""}`}><button className="edit-card-head" onClick={()=>toggleSection("basic")}><span><Icon name="building" /></span><div><strong>Basic Information</strong><small>Property identity and location</small></div><Icon name="chevron" /></button>{open.basic&&<div className="edit-card-body edit-form-grid"><label><span>Title</span><input value={fields.title} onChange={e=>setField("title",e.target.value)} /></label><label><span>Location</span><input value={fields.location} onChange={e=>setField("location",e.target.value)} /></label><label><span>Type</span><select value={fields.type} onChange={e=>setField("type",e.target.value)}>{["Room","Flat","Apartment","Office Area","Parking"].map(x=><option key={x}>{x}</option>)}</select></label></div>}</section>
+      <section className={`edit-card ${open.details?"open":""}`}><button className="edit-card-head" onClick={()=>toggleSection("details")}><span><Icon name="settings" /></span><div><strong>Property Details</strong><small>Pricing, space, and room information</small></div><Icon name="chevron" /></button>{open.details&&<div className="edit-card-body edit-form-grid detail-fields"><label><span>Price / month</span><div className="prefixed-input"><b>৳</b><input value={fields.price} onChange={e=>setField("price",e.target.value)} /></div></label><label><span>Deposit</span><div className="prefixed-input"><b>৳</b><input value={fields.deposit} onChange={e=>setField("deposit",e.target.value)} /></div></label><label><span>Size</span><div className="suffixed-input"><input value={fields.size} onChange={e=>setField("size",e.target.value)} /><b>sqft</b></div></label><label><span>Bedrooms</span><input type="number" value={fields.bedrooms} onChange={e=>setField("bedrooms",e.target.value)} /></label><label><span>Bathrooms</span><input type="number" value={fields.bathrooms} onChange={e=>setField("bathrooms",e.target.value)} /></label></div>}</section>
+      <section className={`edit-card ${open.amenities?"open":""}`}><button className="edit-card-head" onClick={()=>toggleSection("amenities")}><span><Icon name="star" /></span><div><strong>Amenities</strong><small>Features included with this property</small></div><Icon name="chevron" /></button>{open.amenities&&<div className="edit-card-body edit-amenities">{[["search","WiFi"],["building","Parking"],["settings","Security"],["arrow","Lift"],["heart","Pets"]].map(item=><button className={amenities.includes(item[1])?"selected":""} onClick={()=>setAmenities(current=>current.includes(item[1])?current.filter(x=>x!==item[1]):[...current,item[1]])} key={item[1]}><Icon name={item[0] as IconName} /><span>{item[1]}</span><i>{amenities.includes(item[1])?"✓":"+"}</i></button>)}</div>}</section>
+      <section className={`edit-card ${open.photos?"open":""}`}><button className="edit-card-head" onClick={()=>toggleSection("photos")}><span><Icon name="eye" /></span><div><strong>Photos</strong><small>Manage the listing gallery and primary image</small></div><Icon name="chevron" /></button>{open.photos&&<div className="edit-card-body"><div className="edit-photo-toolbar"><p><strong>{photos.length} images</strong><small>Drag images to reorder or select a new primary image.</small></p><label><input type="file" accept="image/*" multiple onChange={()=>setPhotos(current=>[...current,homes[5].image])} /><Icon name="plus" size={15} /> Upload new images</label></div><div className="edit-photo-grid">{photos.map((photo,i)=><article className={primary===i?"primary":""} key={`${photo}-${i}`}><img src={photo} alt="" />{primary===i&&<Badge>Primary</Badge>}<div><button onClick={()=>setPrimary(i)}>{primary===i?"Primary image":"Make primary"}</button><button className="delete" onClick={()=>{setPhotos(items=>items.filter((_,index)=>index!==i));if(primary>=i)setPrimary(0);}}>Remove</button></div></article>)}</div></div>}</section>
+    </div>
+    <div className="edit-sticky-bar"><div>{importantChanged?<><i /><span><strong>Unsaved changes</strong><small>Important listing details have been modified.</small></span></>:<span><strong>All changes saved</strong><small>Your listing is up to date.</small></span>}</div><div><Button variant="secondary" onClick={()=>go("Owner listings")}>Cancel</Button><Button onClick={save}>Save Changes</Button></div></div>
+    {confirmOpen&&<div className="modal-backdrop" onMouseDown={()=>setConfirmOpen(false)}><section className="modal change-warning-modal" onMouseDown={e=>e.stopPropagation()}><div className="modal-icon danger"><Icon name="settings" /></div><h2>Confirm important changes</h2><p className="modal-description">You changed public listing details such as the title, location, type, or price. These updates may require another admin review.</p><div className="change-summary"><span><strong>Previous price</strong><small>৳{original.price}</small></span><Icon name="arrow" /><span><strong>Updated price</strong><small>৳{fields.price}</small></span></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setConfirmOpen(false)}>Review Changes</Button><Button onClick={()=>{setConfirmOpen(false);setSaved(true);window.setTimeout(()=>setSaved(false),1800);}}>Confirm & Save</Button></div></section></div>}
+  </div>;
+}
+
+function OwnerBookingDetailsPage({ go }: { go: (page:string)=>void }) {
+  const [status,setStatus] = useState<"Pending"|"Approved"|"Rejected"|"Cancelled">("Pending");
+  const stage=status==="Pending"?1:status==="Approved"?2:1;
+  const tone=status==="Approved"?"success":status==="Pending"?"warning":"danger";
+  return <div className="owner-booking-detail-page">
+    <button className="booking-back" onClick={()=>go("Owner booking requests")}><Icon name="arrow" size={16} /> Back to Booking Requests</button>
+    <div className="owner-booking-detail-head"><div><p className="eyebrow">RESERVATION BR-1048</p><h1>Booking Details</h1><p>Review the reservation, renter profile, and booking progress.</p></div><Badge tone={tone}>{status==="Pending"?"Pending Review":status}</Badge></div>
+    <section className="owner-reservation-summary"><img src={homes[0].image} alt="Modern Apartment in Gulshan interior" /><div className="reservation-property"><small>PROPERTY</small><h2>{homes[0].title}</h2><p><Icon name="pin" size={14} /> {homes[0].place}</p></div><div className="reservation-stat"><small>RENTER</small><strong>Farah Ahmed</strong></div><div className="reservation-stat"><small>DATES</small><strong>01 Jan – 01 Jul 2027</strong><span>6 months</span></div><div className="reservation-stat amount"><small>TOTAL AMOUNT</small><strong>৳288,000</strong><span>৳48,000 / month</span></div></section>
+    <div className="owner-booking-detail-layout"><div>
+      <section className="owner-detail-card owner-renter-profile"><div className="owner-detail-card-head"><div><h2>Renter Profile</h2><p>Contact and booking information</p></div><Badge tone="success">Verified renter</Badge></div><div className="owner-renter-main"><span className="avatar">FA</span><div><h3>Farah Ahmed</h3><p>RentNest member since March 2024</p></div><Button variant="secondary" onClick={()=>go("Owner messages")}><Icon name="message" size={15} /> Message</Button></div><div className="owner-renter-contact"><span><Icon name="mail" size={15} /><div><small>EMAIL</small><strong>farah.ahmed@example.com</strong></div></span><span><Icon name="message" size={15} /><div><small>PHONE</small><strong>+880 1712 345 678</strong></div></span></div><div className="booking-history"><div><strong>3</strong><span>Previous bookings</span></div><div><strong>2</strong><span>Completed rentals</span></div><div><strong>4.9</strong><span>Average rating</span></div><p><Icon name="star" size={15} /> Reliable renter with no cancellations or payment issues.</p></div></section>
+      <section className="owner-detail-card owner-booking-timeline"><div className="owner-detail-card-head"><div><h2>Booking Timeline</h2><p>Reservation progress and important updates</p></div></div><div className="owner-vertical-timeline">{[["Request Submitted","Farah sent a request for this property.","12 Dec 2026 · 10:24 AM"],["Owner Review",status==="Pending"?"Awaiting your decision.":"You reviewed this booking request.","In progress"],[status==="Rejected"?"Request Rejected":status==="Cancelled"?"Booking Cancelled":"Approved",status==="Approved"?"You approved the booking request.":"Approval is required before confirmation.",status==="Approved"?"Today":"Pending"],["Active Rental","The rental period begins after check-in.","01 Jan 2027"]].map((item,i)=><article className={`${i<stage?"complete":i===stage?"current":""} ${status==="Rejected"&&i===1?"failed":""}`} key={item[0]}><span>{i<stage?"✓":i+1}</span><div><strong>{item[0]}</strong><p>{item[1]}</p><small>{item[2]}</small></div></article>)}</div></section>
+    </div><aside className="owner-booking-actions-card"><p className="eyebrow">RESERVATION ACTIONS</p><h2>Manage this booking</h2><p>Choose an action for this reservation. The renter will be notified of changes.</p><div><Button onClick={()=>setStatus("Approved")} disabled={status==="Approved"}><Icon name="calendar" size={16} /> {status==="Approved"?"Booking Approved":"Approve Request"}</Button><Button variant="destructive" onClick={()=>setStatus("Rejected")} disabled={status==="Rejected"}>Reject Request</Button><Button variant="secondary" onClick={()=>setStatus("Cancelled")} disabled={status==="Cancelled"}>Cancel Booking</Button><Button variant="secondary" onClick={()=>go("Owner messages")}><Icon name="message" size={16} /> Message Renter</Button></div><small>Last updated 12 Dec 2026 at 10:24 AM</small></aside></div>
+  </div>;
+}
+
+function OwnerBookingRequestsPage({ go }: { go: (page:string)=>void }) {
+  const [requests,setRequests] = useState([
+    {id:"BR-1048",name:"Farah Ahmed",initials:"FA",home:0,start:"2027-01-01",dates:"01 Jan – 01 Jul 2027",duration:"6 months",amount:"৳288,000",status:"Pending"},
+    {id:"BR-1047",name:"Rafi Islam",initials:"RI",home:1,start:"2027-01-15",dates:"15 Jan – 15 Jul 2027",duration:"6 months",amount:"৳219,000",status:"Pending"},
+    {id:"BR-1043",name:"Nusrat Jahan",initials:"NJ",home:0,start:"2026-12-01",dates:"01 Dec – 01 Jun 2027",duration:"6 months",amount:"৳288,000",status:"Approved"},
+    {id:"BR-1039",name:"Samiul Karim",initials:"SK",home:2,start:"2026-11-10",dates:"10 Nov – 10 Feb 2027",duration:"3 months",amount:"৳72,000",status:"Rejected"},
+    {id:"BR-1028",name:"Maliha Noor",initials:"MN",home:3,start:"2026-10-01",dates:"01 Oct – 01 Apr 2027",duration:"6 months",amount:"৳192,000",status:"Cancelled"},
+  ]);
+  const [status,setStatus] = useState("All");
+  const [property,setProperty] = useState("All properties");
+  const [date,setDate] = useState("");
+  const [selected,setSelected] = useState<string|null>(null);
+  const [modal,setModal] = useState<"approve"|"reject"|"details"|null>(null);
+  const [reason,setReason] = useState("");
+  const [sendMessage,setSendMessage] = useState(true);
+  const visible=requests.filter(r=>(status==="All"||r.status===status)&&(property==="All properties"||homes[r.home].title===property)&&(!date||r.start>=date));
+  const current=requests.find(r=>r.id===selected);
+  const tone=(value:string):"success"|"warning"|"danger"|"neutral"=>value==="Approved"?"success":value==="Pending"?"warning":value==="Rejected"?"danger":"neutral";
+  const open=(id:string,type:"approve"|"reject"|"details")=>{setSelected(id);setModal(type);setReason("");};
+  const update=(value:string)=>{setRequests(items=>items.map(item=>item.id===selected?{...item,status:value}:item));setModal(null);setSelected(null);};
+  return <div className="owner-booking-page"><div className="owner-booking-head"><div><p className="eyebrow">OWNER WORKFLOW</p><h1>Booking Requests</h1><p>Review and manage incoming rental requests.</p></div><div className="booking-request-count"><span>{requests.filter(r=>r.status==="Pending").length}</span><p><strong>Pending requests</strong><small>Waiting for your review</small></p></div></div>
+    <div className="owner-booking-filters"><div className="status-filters">{["All","Pending","Approved","Rejected","Cancelled"].map(x=><button className={status===x?"active":""} onClick={()=>setStatus(x)} key={x}>{x}</button>)}</div><label><span>Property</span><select value={property} onChange={e=>setProperty(e.target.value)}><option>All properties</option>{homes.slice(0,4).map(home=><option key={home.title}>{home.title}</option>)}</select></label><label><Icon name="calendar" size={14} /><span>Date</span><input type="date" value={date} onChange={e=>setDate(e.target.value)} /></label></div>
+    {visible.length?<div className="owner-booking-table"><div className="owner-booking-table-head"><span>Renter</span><span>Property</span><span>Requested dates</span><span>Duration</span><span>Total</span><span>Status</span><span>Actions</span></div>{visible.map(request=><article key={request.id}><div className="request-person"><span className="avatar">{request.initials}</span><div><strong>{request.name}</strong><small>{request.id}</small></div></div><div className="request-home"><img src={homes[request.home].image} alt="" /><div><strong>{homes[request.home].title}</strong><small>{homes[request.home].place.split("·")[0]}</small></div></div><span className="request-dates">{request.dates}</span><span>{request.duration}</span><strong>{request.amount}</strong><Badge tone={tone(request.status)}>{request.status}</Badge><div className="owner-booking-actions">{request.status==="Pending"?<><button className="approve" onClick={()=>open(request.id,"approve")}>Approve</button><button className="reject" onClick={()=>open(request.id,"reject")}>Reject</button><button onClick={()=>go("Owner booking details")}>View Details</button></>:request.status==="Approved"?<><button className="cancel" onClick={()=>setRequests(items=>items.map(item=>item.id===request.id?{...item,status:"Cancelled"}:item))}>Cancel Booking</button><button onClick={()=>go("Owner messages")}>Message Renter</button></>:<button onClick={()=>go("Owner booking details")}>View Details</button>}</div></article>)}</div>:<div className="booking-empty"><span><Icon name="calendar" size={30} /></span><h2>No booking requests found.</h2><p>Try adjusting your status, property, or date filters.</p><Button variant="secondary" onClick={()=>{setStatus("All");setProperty("All properties");setDate("");}}>Clear Filters</Button></div>}
+    {current&&modal&&<div className="modal-backdrop" onMouseDown={()=>setModal(null)}><section className={`modal owner-request-modal ${modal==="details"?"details":""}`} onMouseDown={e=>e.stopPropagation()}>{modal==="approve"?<><div className="modal-icon"><Icon name="calendar" /></div><h2>Approve booking request?</h2><p className="modal-description">Confirm that this property is available for the renter and requested dates.</p><div className="approval-summary"><img src={homes[current.home].image} alt="" /><div><small>PROPERTY</small><strong>{homes[current.home].title}</strong><span>{current.dates}</span></div></div><div className="approval-renter"><span className="avatar">{current.initials}</span><div><small>RENTER</small><strong>{current.name}</strong></div><b>{current.amount}</b></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button><Button onClick={()=>update("Approved")}>Confirm Approval</Button></div></>:modal==="reject"?<><div className="modal-icon danger"><Icon name="calendar" /></div><h2>Reject booking request?</h2><p className="modal-description">Provide an optional reason to help the renter understand your decision.</p><div className="approval-renter"><span className="avatar">{current.initials}</span><div><small>RENTER</small><strong>{current.name}</strong></div><Badge tone="warning">{current.dates}</Badge></div><label className="reject-reason"><span>Reason for rejection (optional)</span><textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Explain why you cannot approve this request..." /></label><label className="send-renter-message"><input type="checkbox" checked={sendMessage} onChange={e=>setSendMessage(e.target.checked)} /><span><strong>Send message to renter</strong><small>{sendMessage?"The renter will receive your reason.":"No message will be sent."}</small></span></label><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button><Button variant="destructive" onClick={()=>update("Rejected")}>Confirm Rejection</Button></div></>:<><div className="modal-header"><div><p className="eyebrow">{current.id}</p><h2>Request Details</h2></div><button className="icon-button" onClick={()=>setModal(null)}>×</button></div><div className="request-detail-property"><img src={homes[current.home].image} alt="" /><div><h3>{homes[current.home].title}</h3><p>{homes[current.home].place}</p></div><Badge tone={tone(current.status)}>{current.status}</Badge></div><div className="booking-detail-grid"><span><small>RENTER</small><strong>{current.name}</strong></span><span><small>DATES</small><strong>{current.dates}</strong></span><span><small>DURATION</small><strong>{current.duration}</strong></span><span><small>TOTAL AMOUNT</small><strong>{current.amount}</strong></span></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Close</Button>{current.status==="Pending"&&<><Button variant="destructive" onClick={()=>setModal("reject")}>Reject</Button><Button onClick={()=>setModal("approve")}>Approve</Button></>}</div></>}</section></div>}
+  </div>;
+}
+
+function OwnerEarningsPage() {
+  const transactions = [
+    {id:"TX-8042",date:"2026-12-12",label:"12 Dec 2026",home:0,renter:"Farah Ahmed",initials:"FA",amount:"৳48,000",status:"Paid"},
+    {id:"TX-8038",date:"2026-12-05",label:"05 Dec 2026",home:1,renter:"Rafi Islam",initials:"RI",amount:"৳36,500",status:"Paid"},
+    {id:"TX-8024",date:"2026-11-28",label:"28 Nov 2026",home:3,renter:"Maliha Noor",initials:"MN",amount:"৳32,000",status:"Processing"},
+    {id:"TX-8017",date:"2026-11-12",label:"12 Nov 2026",home:0,renter:"Nusrat Jahan",initials:"NJ",amount:"৳48,000",status:"Paid"},
+    {id:"TX-7998",date:"2026-10-30",label:"30 Oct 2026",home:2,renter:"Samiul Karim",initials:"SK",amount:"৳24,000",status:"Pending"},
+    {id:"TX-7971",date:"2026-10-05",label:"05 Oct 2026",home:1,renter:"Aminul Haque",initials:"AH",amount:"৳36,500",status:"Paid"},
+  ];
+  const [property,setProperty]=useState("All properties");
+  const [from,setFrom]=useState("");
+  const [to,setTo]=useState("");
+  const visible=transactions.filter(item=>(property==="All properties"||homes[item.home].title===property)&&(!from||item.date>=from)&&(!to||item.date<=to));
+  return <div className="owner-earnings-page">
+    <div className="earnings-head"><div><p className="eyebrow">FINANCIAL OVERVIEW</p><h1>Earnings</h1><p>Track rental income and payment activity across your properties.</p></div><Button variant="secondary"><Icon name="arrow" size={16} /> Export Statement</Button></div>
+    <div className="earnings-summary">{[
+      ["star","Total Earnings","৳624,500","All-time rental income","positive"],
+      ["calendar","This Month","৳84,500","+12.4% from last month","positive"],
+      ["building","Active Rentals","3","Across 3 properties","neutral"],
+      ["more","Pending Payments","৳56,000","2 payments awaiting settlement","warning"],
+    ].map(item=><article key={item[1]}><span className={`earnings-icon ${item[4]}`}><Icon name={item[0] as IconName} /></span><div><small>{item[1]}</small><strong>{item[2]}</strong><p className={item[4]}>{item[3]}</p></div></article>)}</div>
+    <div className="earnings-overview-grid"><section className="earnings-chart-card"><div className="earnings-section-head"><div><h2>Income Overview</h2><p>Monthly rental income for the last six months</p></div><Badge tone="success">+18.6% growth</Badge></div><div className="earnings-chart" role="img" aria-label="Monthly income increased from July to December"><div className="chart-scale"><span>৳100k</span><span>৳75k</span><span>৳50k</span><span>৳25k</span><span>৳0</span></div><div className="chart-bars">{[["Jul","bar-1","৳42k"],["Aug","bar-2","৳51k"],["Sep","bar-3","৳49k"],["Oct","bar-4","৳62k"],["Nov","bar-5","৳71k"],["Dec","bar-6","৳84.5k"]].map(item=><div className="chart-month" key={item[0]}><div className="chart-column"><span>{item[2]}</span><i className={item[1]} /></div><small>{item[0]}</small></div>)}</div></div></section><aside className="next-payout"><span><Icon name="calendar" /></span><p className="eyebrow">NEXT PAYOUT</p><strong>৳32,000</strong><p>Expected on 18 December</p><div><small>LAKEVIEW FAMILY APARTMENT</small><b>Maliha Noor</b></div><Badge tone="warning">Processing</Badge></aside></div>
+    <section className="transactions-section"><div className="transactions-head"><div><h2>Transactions</h2><p>{visible.length} payment records</p></div><div className="earnings-filters"><label><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)} /></label><label><span>To</span><input type="date" value={to} onChange={e=>setTo(e.target.value)} /></label><label><span>Property</span><select value={property} onChange={e=>setProperty(e.target.value)}><option>All properties</option>{homes.slice(0,4).map(home=><option key={home.title}>{home.title}</option>)}</select></label></div></div>
+      {visible.length?<div className="earnings-table"><div className="earnings-table-head"><span>Date</span><span>Property</span><span>Renter</span><span>Amount</span><span>Status</span></div>{visible.map(item=><article key={item.id}><div><strong>{item.label}</strong><small>{item.id}</small></div><div className="earnings-property"><img src={homes[item.home].image} alt="" /><span><strong>{homes[item.home].title}</strong><small>{homes[item.home].place.split("·")[0]}</small></span></div><div className="earnings-renter"><span className="avatar">{item.initials}</span><strong>{item.renter}</strong></div><strong className="transaction-amount">{item.amount}</strong><Badge tone={item.status==="Paid"?"success":item.status==="Pending"||item.status==="Processing"?"warning":"danger"}>{item.status}</Badge></article>)}</div>:<div className="earnings-empty"><span><Icon name="star" size={28} /></span><h2>No earnings yet.</h2><p>No transactions match the selected date range and property.</p><Button variant="secondary" onClick={()=>{setFrom("");setTo("");setProperty("All properties");}}>Clear Filters</Button></div>}
+    </section>
+  </div>;
+}
+
+function Admin() {
+  const [state,setState] = useState<"loading"|"ready"|"error">("loading");
+  useEffect(()=>{const timer=window.setTimeout(()=>setState("ready"),400);return()=>window.clearTimeout(timer);},[]);
+  const activities = [
+    ["users","New owner registered","Samira Rahman joined as a property owner","2 min ago","success"],
+    ["building","Property approved","Modern Apartment in Gulshan was published","12 min ago","success"],
+    ["calendar","Booking cancelled","Booking RN-2849 was cancelled by the renter","34 min ago","warning"],
+    ["users","User suspended","Account US-1042 was suspended after review","1 hr ago","danger"],
+    ["star","Payment settled","Owner payout TX-8042 was completed","2 hrs ago","success"],
+  ];
+  if(state==="loading") return <div className="admin-dashboard admin-loading"><div className="skeleton admin-loading-head"/><div className="admin-loading-stats">{[0,1,2,3,4].map(i=><div className="skeleton" key={i}/>)}</div><div className="admin-loading-grid"><div className="skeleton"/><div className="skeleton"/></div></div>;
+  if(state==="error") return <ErrorState type="server" title="Something went wrong on our side." description="We could not retrieve current platform data." primaryLabel="Try Again" onPrimary={()=>{setState("loading");window.setTimeout(()=>setState("ready"),400);}}/>;
+  return <div className="admin-dashboard"><div className="admin-dashboard-head"><div><p className="eyebrow">PLATFORM CONTROL CENTER</p><h1>Admin Dashboard</h1><p>Monitor platform performance, moderation queues, and operational health.</p></div><div className="admin-head-actions"><Button variant="secondary"><Icon name="arrow" size={15}/> Export Report</Button><Button onClick={()=>{setState("loading");window.setTimeout(()=>setState("ready"),400);}}><Icon name="settings" size={15}/> Refresh Data</Button></div></div>
+    <section className="admin-overview-stats">{[
+      ["users","TOTAL USERS","25,430","Users","+8.2% this month","up"],
+      ["building","TOTAL LISTINGS","8,540","Properties","+126 this week","up"],
+      ["bell","PENDING APPROVALS","126","Listings","Needs review","attention"],
+      ["calendar","ACTIVE BOOKINGS","2,450","Reservations","+4.6% this week","up"],
+      ["star","TODAY'S ACTIVITY","18,942","Events","Live platform events","neutral"],
+    ].map(item=><article key={item[1]}><span className={`admin-stat-icon ${item[5]}`}><Icon name={item[0] as IconName}/></span><div><small>{item[1]}</small><strong>{item[2]} <b>{item[3]}</b></strong><p className={item[5]}>{item[4]}</p></div></article>)}</section>
+    <div className="admin-primary-grid"><section className="admin-activity-panel"><div className="admin-panel-head"><div><h2>Recent Activity</h2><p>Latest administrative and platform events</p></div><Button variant="ghost">View Activity Log <Icon name="arrow" size={14}/></Button></div>{activities.length?<div className="admin-activity-feed">{activities.map((item,i)=><article key={item[1]}><span className={`admin-feed-icon ${item[4]}`}><Icon name={item[0] as IconName} size={16}/></span><div><strong>{item[1]}</strong><p>{item[2]}</p></div><time>{item[3]}</time>{i<activities.length-1&&<i/>}</article>)}</div>:<div className="admin-no-activity"><Icon name="bell"/><strong>No activity yet</strong><p>New platform events will appear here.</p></div>}</section>
+      <section className="admin-activity-chart"><div className="admin-panel-head"><div><h2>Platform Activity</h2><p>Events processed today</p></div><Badge tone="success">Live</Badge></div><div className="admin-metric"><strong>18,942</strong><span>+12.8% vs yesterday</span></div><div className="admin-spark-bars" aria-label="Hourly platform activity chart" role="img">{["a1","a2","a3","a4","a5","a6","a7","a8","a9","a10","a11","a12"].map(x=><i className={x} key={x}/>)}</div><div className="admin-chart-legend"><span>00:00</span><span>12:00</span><span>Now</span></div></section></div>
+    <section className="admin-quick-section"><div className="admin-section-heading"><h2>Quick Actions</h2><p>Common administrative workflows</p></div><div className="admin-quick-grid">{[
+      ["building","Review Pending Listings","126 listings need moderation","Review queue","attention"],
+      ["users","Manage Users","Search, verify, or restrict accounts","Open users","neutral"],
+      ["star","View Reports","Financial and operational reports","Open reports","neutral"],
+      ["calendar","Review Bookings","Resolve booking issues and disputes","Open bookings","neutral"],
+    ].map(item=><button key={item[1]}><span className={item[4]}><Icon name={item[0] as IconName}/></span><div><strong>{item[1]}</strong><p>{item[2]}</p><small>{item[3]} <Icon name="arrow" size={12}/></small></div></button>)}</div></section>
+    <section className="admin-health"><div className="admin-section-heading"><h2>System Health</h2><p>Live service availability and usage</p></div><div className="admin-health-grid"><article><span className="health-status online"><i/></span><div><small>DATABASE STATUS</small><strong>Operational</strong><p>32 ms response time</p></div><b>99.99%</b></article><article><span className="health-status online"><i/></span><div><small>SERVER STATUS</small><strong>All systems operational</strong><p>4 of 4 regions online</p></div><b>99.98%</b></article><article><span className="health-status active"><Icon name="users" size={16}/></span><div><small>ACTIVE USERS</small><strong>3,842 online</strong><p>Peak today: 4,126</p></div><b>+6.4%</b></article></div></section>
+  </div>;
+}
+
+function AdminLive({ go }: { go:(page:string)=>void }) {
+  const [overview,setOverview]=useState<Overview|null>(null),[error,setError]=useState(""),[loading,setLoading]=useState(true),[refresh,setRefresh]=useState(0);
+  useEffect(()=>{let active=true;setLoading(true);workspaceService.overview().then(data=>{if(active){setOverview(data);setError("");}}).catch(e=>{if(active)setError(e instanceof Error?e.message:"Unable to load administrator data.");}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[refresh]);
+  const exportReport=()=>{if(!overview)return;const rows=[["Metric","Value"],["Total users",String(overview.counts.users)],["Total listings",String(overview.counts.listings)],["Pending listings",String(overview.counts.pendingListings)],["Active bookings",String(overview.counts.activeBookings)],["Activity today",String(overview.counts.activityToday)],["Signed-in users",String(overview.counts.signedInUsers)]];const url=URL.createObjectURL(new Blob([rows.map(row=>row.map(value=>`\"${value.replaceAll('"','\"\"')}\"`).join(",")).join("\n")],{type:"text/csv"}));const link=document.createElement("a");link.href=url;link.download="rentnest-admin-report.csv";link.click();URL.revokeObjectURL(url);};
+  const iconFor=(action:string):IconName=>action.includes("booking")?"calendar":action.includes("user")||action.includes("profile")?"users":action.includes("payment")?"star":"building";
+  if(loading&&!overview)return <div className="admin-dashboard admin-loading"><div className="skeleton admin-loading-head"/><div className="admin-loading-stats">{[0,1,2,3,4].map(i=><div className="skeleton" key={i}/>)}</div><div className="admin-loading-grid"><div className="skeleton"/><div className="skeleton"/></div></div>;
+  if(error&&!overview)return <ErrorState type="server" title="Unable to load the admin dashboard." description={error} primaryLabel="Try Again" onPrimary={()=>setRefresh(value=>value+1)}/>;
+  const data=overview!;
+  const max=Math.max(1,...data.hourly.map(item=>Number(item.count)));
+  const cards: [IconName,string,number,string,string][]=[["users","TOTAL USERS",data.counts.users,"Users","up"],["building","TOTAL LISTINGS",data.counts.listings,"Properties","up"],["bell","PENDING APPROVALS",data.counts.pendingListings,"Listings","attention"],["calendar","ACTIVE BOOKINGS",data.counts.activeBookings,"Reservations","up"],["star","TODAY'S ACTIVITY",data.counts.activityToday,"Events","neutral"]];
+  return <div className="admin-dashboard"><div className="admin-dashboard-head"><div><p className="eyebrow">PLATFORM CONTROL CENTER</p><h1>Admin Dashboard</h1><p>Monitor platform performance, moderation queues, and operational health.</p></div><div className="admin-head-actions"><Button variant="secondary" onClick={exportReport}><Icon name="arrow" size={15}/> Export Report</Button><Button onClick={()=>setRefresh(value=>value+1)} disabled={loading}><Icon name="settings" size={15}/>{loading?"Refreshing…":"Refresh Data"}</Button></div></div>
+    {error&&<p className="form-error-message" role="alert">{error}</p>}<section className="admin-overview-stats">{cards.map(item=><article key={item[1]}><span className={`admin-stat-icon ${item[4]}`}><Icon name={item[0]}/></span><div><small>{item[1]}</small><strong>{item[2].toLocaleString()} <b>{item[3]}</b></strong><p className={item[4]}>{item[4]==="attention"?"Needs review":"Live database total"}</p></div></article>)}</section>
+    <div className="admin-primary-grid"><section className="admin-activity-panel"><div className="admin-panel-head"><div><h2>Recent Activity</h2><p>Latest administrative and platform events</p></div><Button variant="ghost" onClick={()=>go("Admin logs")}>View Activity Log <Icon name="arrow" size={14}/></Button></div>{data.items.length?<div className="admin-activity-feed">{data.items.map(item=><article key={item.id}><span className={`admin-feed-icon ${item.outcome}`}><Icon name={iconFor(item.action)} size={16}/></span><div><strong>{item.action.replaceAll("."," ")}</strong><p>{item.description||"Platform activity recorded"}</p></div><time>{new Date(item.createdAt).toLocaleString()}</time></article>)}</div>:<div className="admin-no-activity"><Icon name="bell"/><strong>No activity yet</strong><p>New platform events will appear here.</p></div>}</section><section className="admin-activity-chart"><div className="admin-panel-head"><div><h2>Platform Activity</h2><p>Events processed today</p></div><Badge tone="success">Live</Badge></div><div className="admin-metric"><strong>{data.counts.activityToday.toLocaleString()}</strong><span>Recorded today</span></div><div className="admin-spark-bars" aria-label="Hourly platform activity chart" role="img">{Array.from({length:12},(_,index)=>{const count=Number(data.hourly.find(item=>Math.floor(Number(item.hour)/2)===index)?.count||0);return <i style={{height:`${Math.max(8,count/max*100)}%`}} key={index}/>;})}</div><div className="admin-chart-legend"><span>00:00</span><span>12:00</span><span>Now</span></div></section></div>
+    <section className="admin-quick-section"><div className="admin-section-heading"><h2>Quick Actions</h2><p>Common administrative workflows</p></div><div className="admin-quick-grid">{[["building","Review Pending Listings",data.counts.pendingListings+" listings need moderation","Review queue","attention","Admin listings"],["users","Manage Users","Search, verify, or restrict accounts","Open users","neutral","Admin users"],["star","View Reports","Financial and operational reports","Open reports","neutral","Admin analytics"],["calendar","Review Bookings","Resolve booking issues and disputes","Open bookings","neutral","Admin bookings"]].map(item=><button key={item[1]} onClick={()=>go(item[5])}><span className={item[4]}><Icon name={item[0] as IconName}/></span><div><strong>{item[1]}</strong><p>{item[2]}</p><small>{item[3]} <Icon name="arrow" size={12}/></small></div></button>)}</div></section>
+    <section className="admin-health"><div className="admin-section-heading"><h2>System Health</h2><p>Live service availability and usage</p></div><div className="admin-health-grid"><article><span className="health-status online"><i/></span><div><small>DATABASE STATUS</small><strong>{data.database==="connected"?"Operational":"Unavailable"}</strong><p>{data.databaseResponseMs} ms response time</p></div><b>Live</b></article><article><span className="health-status online"><i/></span><div><small>API STATUS</small><strong>Operational</strong><p>Authenticated administrator view</p></div><b>Live</b></article><article><span className="health-status active"><Icon name="users" size={16}/></span><div><small>SIGNED-IN USERS</small><strong>{data.counts.signedInUsers}</strong><p>Active sessions in the database</p></div><b>Live</b></article></div></section>
+  </div>;
+}
+
+function AdminUserManagement() {
+  const [users,setUsers]=useState([
+    {id:"US-1048",initials:"FA",name:"Farah Ahmed",email:"farah.ahmed@example.com",role:"Renter",status:"Active",joined:"2026-12-08",joinedLabel:"08 Dec 2026",bookings:3},
+    {id:"US-1047",initials:"AK",name:"Aisha Khan",email:"aisha.khan@example.com",role:"Owner",status:"Active",joined:"2026-11-24",joinedLabel:"24 Nov 2026",bookings:18},
+    {id:"US-1042",initials:"SI",name:"Samiul Islam",email:"samiul.islam@example.com",role:"Renter",status:"Suspended",joined:"2026-10-17",joinedLabel:"17 Oct 2026",bookings:1},
+    {id:"US-1039",initials:"NR",name:"Nadia Rahman",email:"nadia.rahman@example.com",role:"Owner",status:"Active",joined:"2026-09-04",joinedLabel:"04 Sep 2026",bookings:12},
+    {id:"US-1031",initials:"MH",name:"Mahmud Hasan",email:"mahmud.hasan@example.com",role:"Renter",status:"Banned",joined:"2026-08-21",joinedLabel:"21 Aug 2026",bookings:0},
+    {id:"US-1025",initials:"AR",name:"Admin Rahman",email:"admin.rahman@rentnest.com",role:"Admin",status:"Active",joined:"2026-07-10",joinedLabel:"10 Jul 2026",bookings:0},
+    {id:"US-1018",initials:"MN",name:"Maliha Noor",email:"maliha.noor@example.com",role:"Renter",status:"Active",joined:"2026-06-14",joinedLabel:"14 Jun 2026",bookings:5},
+    {id:"US-1009",initials:"RK",name:"Rashed Karim",email:"rashed.karim@example.com",role:"Owner",status:"Suspended",joined:"2026-04-02",joinedLabel:"02 Apr 2026",bookings:7},
+  ]);
+  const [search,setSearch]=useState("");
+  const [roleFilter,setRoleFilter]=useState("All");
+  const [statusFilter,setStatusFilter]=useState("All");
+  const [joinedAfter,setJoinedAfter]=useState("");
+  const [sort,setSort]=useState<"name"|"joined">("joined");
+  const [ascending,setAscending]=useState(false);
+  const [page,setPage]=useState(1);
+  const [selected,setSelected]=useState<string[]>([]);
+  const [menu,setMenu]=useState<string|null>(null);
+  const [detail,setDetail]=useState<string|null>(null);
+  const [banTarget,setBanTarget]=useState<string|null>(null);
+  const [banReason,setBanReason]=useState("");
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{const timer=window.setTimeout(()=>setLoading(false),380);return()=>window.clearTimeout(timer);},[]);
+  const pageSize=5;
+  const filtered=users.filter(user=>(!search||`${user.name} ${user.email}`.toLowerCase().includes(search.toLowerCase()))&&(roleFilter==="All"||user.role===roleFilter)&&(statusFilter==="All"||user.status===statusFilter)&&(!joinedAfter||user.joined>=joinedAfter)).sort((a,b)=>(ascending?1:-1)*(sort==="name"?a.name.localeCompare(b.name):a.joined.localeCompare(b.joined)));
+  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize));
+  const visible=filtered.slice((page-1)*pageSize,page*pageSize);
+  const selectedUser=users.find(user=>user.id===detail);
+  const banningUser=users.find(user=>user.id===banTarget);
+  const setStatus=(id:string,status:string)=>{setUsers(current=>current.map(user=>user.id===id?{...user,status}:user));setMenu(null);};
+  const bulkStatus=(status:string)=>{setUsers(current=>current.map(user=>selected.includes(user.id)?{...user,status}:user));setSelected([]);};
+  const toggleSort=(value:"name"|"joined")=>{if(sort===value)setAscending(current=>!current);else{setSort(value);setAscending(true);}};
+  const reset=()=>{setSearch("");setRoleFilter("All");setStatusFilter("All");setJoinedAfter("");setPage(1);};
+  return <div className="admin-users-page">
+    <div className="admin-users-head"><div><p className="eyebrow">ADMINISTRATION</p><h1>User Management</h1><p>Manage renters, owners, and administrators.</p></div><div><Badge tone="neutral">{users.length.toLocaleString()} users</Badge><Button><Icon name="plus" size={15}/> Add Administrator</Button></div></div>
+    <section className="admin-user-filters"><label className="admin-user-search"><Icon name="search" size={16}/><input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Search users by name or email" /></label><label><span>Role</span><select value={roleFilter} onChange={e=>{setRoleFilter(e.target.value);setPage(1);}}><option>All</option><option>Renter</option><option>Owner</option><option>Admin</option></select></label><label><span>Status</span><select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(1);}}><option>All</option><option>Active</option><option>Suspended</option><option>Banned</option></select></label><label><span>Joined after</span><input type="date" value={joinedAfter} onChange={e=>{setJoinedAfter(e.target.value);setPage(1);}} /></label><Button variant="ghost" onClick={reset}>Reset</Button></section>
+    {selected.length>0&&<div className="admin-bulk-bar"><span><strong>{selected.length}</strong> users selected</span><select defaultValue="" onChange={e=>{if(e.target.value)bulkStatus(e.target.value);}}><option value="" disabled>Bulk actions</option><option value="Active">Restore access</option><option value="Suspended">Suspend users</option><option value="Banned">Ban users</option></select><button onClick={()=>setSelected([])}>Clear selection</button></div>}
+    <section className="admin-users-table-wrap">{loading?<TableSkeleton rows={5}/>:visible.length?<><div className="admin-users-table-head"><input type="checkbox" aria-label="Select all visible users" checked={visible.every(user=>selected.includes(user.id))} onChange={e=>setSelected(e.target.checked?[...new Set([...selected,...visible.map(user=>user.id)])]:selected.filter(id=>!visible.some(user=>user.id===id)))} /><span>Avatar</span><button onClick={()=>toggleSort("name")}>Name {sort==="name"&&(ascending?"↑":"↓")}</button><span>Email</span><span>Role</span><span>Status</span><button onClick={()=>toggleSort("joined")}>Joined Date {sort==="joined"&&(ascending?"↑":"↓")}</button><span>Actions</span></div><div className="admin-users-table">{visible.map(user=><article key={user.id}><input type="checkbox" aria-label={`Select ${user.name}`} checked={selected.includes(user.id)} onChange={()=>setSelected(current=>current.includes(user.id)?current.filter(id=>id!==user.id):[...current,user.id])}/><span className="avatar">{user.initials}</span><div className="admin-user-name"><strong>{user.name}</strong><small>{user.id}</small></div><span className="admin-user-email">{user.email}</span><span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span><Badge tone={user.status==="Active"?"success":user.status==="Suspended"?"warning":"danger"}>{user.status}</Badge><span className="admin-joined">{user.joinedLabel}</span><div className="admin-row-menu"><button className="icon-button" onClick={()=>setMenu(menu===user.id?null:user.id)} aria-label={`Actions for ${user.name}`}><Icon name="more"/></button>{menu===user.id&&<div><button onClick={()=>{setDetail(user.id);setMenu(null);}}><Icon name="eye" size={14}/> View Details</button>{user.status==="Active"&&<button onClick={()=>setStatus(user.id,"Suspended")}><Icon name="lock" size={14}/> Suspend User</button>}{user.status!=="Banned"?<button className="danger" onClick={()=>{setBanTarget(user.id);setBanReason("");setMenu(null);}}><Icon name="users" size={14}/> Ban User</button>:<button onClick={()=>setStatus(user.id,"Active")}><Icon name="users" size={14}/> Unban User</button>}{user.status==="Suspended"&&<button onClick={()=>setStatus(user.id,"Active")}><Icon name="settings" size={14}/> Restore Access</button>}</div>}</div></article>)}</div><div className="admin-pagination"><p>Showing <strong>{(page-1)*pageSize+1}–{Math.min(page*pageSize,filtered.length)}</strong> of <strong>{filtered.length}</strong> users</p><div><Button variant="secondary" disabled={page===1} onClick={()=>setPage(page-1)}>Previous</Button>{Array.from({length:pageCount},(_,i)=>i+1).map(number=><button className={page===number?"active":""} onClick={()=>setPage(number)} key={number}>{number}</button>)}<Button variant="secondary" disabled={page===pageCount} onClick={()=>setPage(page+1)}>Next</Button></div></div></>:<div className="admin-users-empty"><span><Icon name="users" size={28}/></span><h2>No users found</h2><p>Try changing your search terms or user filters.</p><Button variant="secondary" onClick={reset}>Clear Filters</Button></div>}</section>
+    {selectedUser&&<div className="admin-drawer-backdrop" role="presentation" onMouseDown={()=>setDetail(null)}><aside className="admin-user-drawer" role="dialog" aria-modal="true" aria-label={`User details for ${selectedUser.name}`} onMouseDown={e=>e.stopPropagation()}><div className="admin-drawer-title"><div><p className="eyebrow">USER INSPECTION</p><h2>User Details</h2></div><button className="icon-button" onClick={()=>setDetail(null)} aria-label="Close drawer">×</button></div>
+      <header className="admin-drawer-profile"><span className="avatar">{selectedUser.initials}</span><div><h3>{selectedUser.name}</h3><p>{selectedUser.id}</p><span><span className={`role-badge ${selectedUser.role.toLowerCase()}`}>{selectedUser.role}</span><Badge tone={selectedUser.status==="Active"?"success":selectedUser.status==="Suspended"?"warning":"danger"}>{selectedUser.status}</Badge></span></div></header>
+      <section className="admin-drawer-section"><div className="admin-drawer-section-head"><h3>User Information</h3><p>Personal and account details</p></div><dl className="admin-user-information"><div><dt>Full Name</dt><dd>{selectedUser.name}</dd></div><div><dt>Username</dt><dd>@{selectedUser.email.split("@")[0]}</dd></div><div><dt>Email</dt><dd>{selectedUser.email}</dd></div><div><dt>Phone</dt><dd>+880 17{selectedUser.id.slice(-2)} 456 789</dd></div><div><dt>Account Created</dt><dd>{selectedUser.joinedLabel}</dd></div><div><dt>Role</dt><dd>{selectedUser.role}</dd></div><div><dt>Status</dt><dd>{selectedUser.status}</dd></div></dl></section>
+      <section className="admin-drawer-section"><div className="admin-drawer-section-head"><h3>Activity Summary</h3><p>Platform engagement at a glance</p></div><div className="admin-user-activity-grid"><article><span><Icon name="building" size={16}/></span><small>PROPERTIES CREATED</small><strong>{selectedUser.role==="Owner"?4:0}</strong></article><article><span><Icon name="calendar" size={16}/></span><small>BOOKINGS MADE</small><strong>{selectedUser.bookings}</strong></article><article><span><Icon name="message" size={16}/></span><small>MESSAGES SENT</small><strong>{selectedUser.bookings*7+12}</strong></article><article><span><Icon name="star" size={16}/></span><small>ACCOUNT ACTIVITY</small><strong>{selectedUser.status==="Active"?"Active":"Restricted"}</strong></article></div></section>
+      <section className="admin-drawer-actions"><div className="admin-drawer-section-head"><h3>Admin Actions</h3><p>Changes take effect immediately</p></div><div>{selectedUser.status!=="Suspended"&&selectedUser.status!=="Banned"&&<Button variant="secondary" onClick={()=>setStatus(selectedUser.id,"Suspended")}><Icon name="lock" size={15}/> Suspend User</Button>}{selectedUser.status!=="Banned"?<Button variant="destructive" onClick={()=>{setBanTarget(selectedUser.id);setBanReason("");}}><Icon name="users" size={15}/> Ban User</Button>:<Button onClick={()=>setStatus(selectedUser.id,"Active")}><Icon name="users" size={15}/> Unban User</Button>}</div></section>
+      <footer className="admin-drawer-footer"><Button variant="secondary" onClick={()=>setDetail(null)}>Close Drawer</Button></footer>
+    </aside></div>}
+    {banningUser&&<ConfirmationModal type="ban" title="Ban this user?" description="The user will lose access to RentNest until an administrator removes the ban." confirmLabel="Confirm Ban" onCancel={()=>setBanTarget(null)} onConfirm={()=>{setStatus(banningUser.id,"Banned");setBanTarget(null);setDetail(null);}} reason={banReason} onReasonChange={setBanReason} reasonLabel="Reason for ban"><div className="confirmation-user"><span className="avatar">{banningUser.initials}</span><div><small>{banningUser.role.toUpperCase()}</small><strong>{banningUser.name}</strong><span>{banningUser.email}</span></div><Badge tone={banningUser.status==="Active"?"success":"warning"}>{banningUser.status}</Badge></div></ConfirmationModal>}
+  </div>;
+}
+
+function AdminListingManagement() {
+  const [listings,setListings]=useState([
+    {id:"LS-2084",home:0,owner:"Aisha Khan",ownerInitials:"AK",type:"Apartment",submitted:"2026-12-14",submittedLabel:"14 Dec 2026",status:"Pending Approval"},
+    {id:"LS-2081",home:1,owner:"Nadia Rahman",ownerInitials:"NR",type:"Flat",submitted:"2026-12-13",submittedLabel:"13 Dec 2026",status:"Pending Approval"},
+    {id:"LS-2077",home:2,owner:"Rashed Karim",ownerInitials:"RK",type:"Studio",submitted:"2026-12-11",submittedLabel:"11 Dec 2026",status:"Approved"},
+    {id:"LS-2069",home:3,owner:"Aisha Khan",ownerInitials:"AK",type:"Apartment",submitted:"2026-12-08",submittedLabel:"08 Dec 2026",status:"Rejected"},
+    {id:"LS-2063",home:4,owner:"Tanvir Hasan",ownerInitials:"TH",type:"Flat",submitted:"2026-12-05",submittedLabel:"05 Dec 2026",status:"Approved"},
+    {id:"LS-2054",home:5,owner:"Samira Rahman",ownerInitials:"SR",type:"Apartment",submitted:"2026-12-01",submittedLabel:"01 Dec 2026",status:"Pending Approval"},
+  ]);
+  const [status,setStatusFilter]=useState("All");
+  const [type,setType]=useState("All types");
+  const [date,setDate]=useState("");
+  const [review,setReview]=useState<string|null>(null);
+  const [target,setTarget]=useState<string|null>(null);
+  const [decision,setDecision]=useState<"approve"|"reject"|null>(null);
+  const [reason,setReason]=useState("");
+  const visible=listings.filter(item=>(status==="All"||item.status===status)&&(type==="All types"||item.type===type)&&(!date||item.submitted>=date));
+  const current=listings.find(item=>item.id===review);
+  const decisionListing=listings.find(item=>item.id===target);
+  const tone=(value:string):"success"|"warning"|"danger"=>value==="Approved"?"success":value==="Rejected"?"danger":"warning";
+  const openDecision=(id:string,value:"approve"|"reject")=>{setTarget(id);setDecision(value);setReason("");};
+  const confirmDecision=()=>{if(!target||!decision)return;setListings(items=>items.map(item=>item.id===target?{...item,status:decision==="approve"?"Approved":"Rejected"}:item));setDecision(null);setTarget(null);setReview(null);};
+  return <div className="admin-listings-page"><div className="admin-listings-head"><div><p className="eyebrow">CONTENT MODERATION</p><h1>Listing Management</h1><p>Review and approve property submissions.</p></div><div className="moderation-queue"><span>{listings.filter(item=>item.status==="Pending Approval").length}</span><p><strong>Pending review</strong><small>Requires a decision</small></p></div></div>
+    <section className="admin-listing-filters"><div className="admin-listing-status-tabs">{["All","Pending Approval","Approved","Rejected"].map(value=><button className={status===value?"active":""} onClick={()=>setStatusFilter(value)} key={value}>{value}</button>)}</div><label><span>Property Type</span><select value={type} onChange={e=>setType(e.target.value)}><option>All types</option><option>Apartment</option><option>Flat</option><option>Studio</option></select></label><label><span>Submitted after</span><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label></section>
+    {visible.length?<section className="admin-listings-table-wrap"><div className="admin-listings-table-head"><span>Property</span><span>Title</span><span>Owner Name</span><span>Location</span><span>Type</span><span>Price</span><span>Submitted</span><span>Status</span><span>Actions</span></div><div className="admin-listings-table">{visible.map(item=><article key={item.id}><img src={homes[item.home].image} alt="" /><div className="moderation-title"><strong>{homes[item.home].title}</strong><small>{item.id}</small></div><div className="moderation-owner"><span className="avatar">{item.ownerInitials}</span><strong>{item.owner}</strong></div><span className="moderation-location">{homes[item.home].place.split("·")[0]}</span><span>{item.type}</span><strong className="moderation-price">{homes[item.home].price}</strong><span className="moderation-date">{item.submittedLabel}</span><Badge tone={tone(item.status)}>{item.status}</Badge><div className="moderation-actions"><button onClick={()=>setReview(item.id)}><Icon name="eye" size={13}/> View</button>{item.status==="Pending Approval"&&<><button className="approve" onClick={()=>openDecision(item.id,"approve")}>Approve</button><button className="reject" onClick={()=>openDecision(item.id,"reject")}>Reject</button></>}</div></article>)}</div></section>:<div className="admin-listings-empty"><span><Icon name="building" size={28}/></span><h2>No listings found</h2><p>No submissions match the current moderation filters.</p><Button variant="secondary" onClick={()=>{setStatusFilter("All");setType("All types");setDate("");}}>Clear Filters</Button></div>}
+    {current&&<div className="admin-drawer-backdrop" onMouseDown={()=>setReview(null)}><aside className="admin-listing-drawer" role="dialog" aria-modal="true" aria-label={`Review ${homes[current.home].title}`} onMouseDown={e=>e.stopPropagation()}><div className="admin-drawer-title"><div><p className="eyebrow">LISTING REVIEW · {current.id}</p><h2>Review Submission</h2></div><button className="icon-button" onClick={()=>setReview(null)}>×</button></div><div className="moderation-gallery"><img src={homes[current.home].image} alt={`${homes[current.home].title} main interior`}/><div>{[1,2,3].map((offset,i)=><img src={homes[(current.home+offset)%homes.length].image} alt={`Property photo ${i+2}`} key={i}/>)}</div></div><div className="listing-drawer-content"><div className="listing-review-title"><div><h2>{homes[current.home].title}</h2><p><Icon name="pin" size={14}/>{homes[current.home].place}</p></div><Badge tone={tone(current.status)}>{current.status}</Badge></div><section className="listing-owner-review"><span className="avatar">{current.ownerInitials}</span><div><small>PROPERTY OWNER</small><strong>{current.owner}</strong><p>Verified owner · 4 active listings</p></div><Badge tone="success">Verified</Badge></section><section className="listing-review-section"><h3>Description</h3><p>A thoughtfully maintained rental home with generous natural light, secure access, and convenient connections to shops and public transport. The property is ready for long-term tenants.</p></section><section className="listing-review-section"><h3>Property Details</h3><div className="listing-review-facts"><span><small>TYPE</small><strong>{current.type}</strong></span><span><small>MONTHLY PRICE</small><strong>{homes[current.home].price}</strong></span><span><small>DETAILS</small><strong>{homes[current.home].meta}</strong></span><span><small>SUBMITTED</small><strong>{current.submittedLabel}</strong></span></div></section><section className="listing-review-section"><h3>Amenities</h3><div className="amenity-chips"><span>Wi-Fi</span><span>Parking</span><span>Lift</span><span>24/7 Security</span><span>Backup Power</span><span>Balcony</span></div></section><section className="listing-review-section listing-photo-check"><h3>Photos</h3><p>4 high-resolution photos uploaded · All images passed automated quality checks.</p></section></div>{current.status==="Pending Approval"&&<footer className="listing-drawer-actions"><Button variant="destructive" onClick={()=>openDecision(current.id,"reject")}>Reject Listing</Button><Button onClick={()=>openDecision(current.id,"approve")}>Approve Listing</Button></footer>}</aside></div>}
+    {decisionListing&&decision&&<ConfirmationModal type={decision} title={decision==="approve"?"Approve this listing?":"Reject this listing?"} description={decision==="approve"?"The property will be published and visible to renters immediately.":"The owner will be notified and the listing will remain hidden."} confirmLabel={decision==="approve"?"Confirm":"Reject"} onCancel={()=>setDecision(null)} onConfirm={confirmDecision} reason={reason} onReasonChange={decision==="reject"?setReason:undefined} reasonLabel="Explain rejection reason"><div className="confirmation-property"><img src={homes[decisionListing.home].image} alt=""/><div><small>LISTING</small><strong>{homes[decisionListing.home].title}</strong><span>{decisionListing.owner} · {homes[decisionListing.home].price} / month</span></div></div></ConfirmationModal>}
+  </div>;
+}
+
+function AdminBookingManagement() {
+  const [bookings,setBookings]=useState([
+    {id:"BK-3108",home:0,renter:"Farah Ahmed",renterInitials:"FA",owner:"Aisha Khan",ownerInitials:"AK",start:"2027-01-01",startLabel:"01 Jan 2027",end:"2027-07-01",endLabel:"01 Jul 2027",amount:"৳288,000",status:"Pending",payment:"Awaiting approval"},
+    {id:"BK-3104",home:1,renter:"Rafi Islam",renterInitials:"RI",owner:"Nadia Rahman",ownerInitials:"NR",start:"2027-01-15",startLabel:"15 Jan 2027",end:"2027-07-15",endLabel:"15 Jul 2027",amount:"৳219,000",status:"Approved",payment:"Deposit pending"},
+    {id:"BK-3097",home:2,renter:"Samiul Karim",renterInitials:"SK",owner:"Rashed Karim",ownerInitials:"RK",start:"2026-12-20",startLabel:"20 Dec 2026",end:"2027-03-20",endLabel:"20 Mar 2027",amount:"৳72,000",status:"Confirmed",payment:"Paid"},
+    {id:"BK-3088",home:3,renter:"Maliha Noor",renterInitials:"MN",owner:"Aisha Khan",ownerInitials:"AK",start:"2026-12-10",startLabel:"10 Dec 2026",end:"2027-06-10",endLabel:"10 Jun 2027",amount:"৳192,000",status:"Cancelled",payment:"Refunded"},
+    {id:"BK-3074",home:4,renter:"Aminul Haque",renterInitials:"AH",owner:"Tanvir Hasan",ownerInitials:"TH",start:"2026-11-28",startLabel:"28 Nov 2026",end:"2027-05-28",endLabel:"28 May 2027",amount:"৳252,000",status:"Rejected",payment:"Not charged"},
+    {id:"BK-3061",home:5,renter:"Nusrat Jahan",renterInitials:"NJ",owner:"Samira Rahman",ownerInitials:"SR",start:"2026-11-10",startLabel:"10 Nov 2026",end:"2027-02-10",endLabel:"10 Feb 2027",amount:"৳85,500",status:"Confirmed",payment:"Paid"},
+  ]);
+  const [status,setStatus]=useState("All");
+  const [from,setFrom]=useState("");
+  const [to,setTo]=useState("");
+  const [property,setProperty]=useState("All properties");
+  const [user,setUser]=useState("");
+  const [detail,setDetail]=useState<string|null>(null);
+  const [deleteTarget,setDeleteTarget]=useState<string|null>(null);
+  const [bookingDecision,setBookingDecision]=useState<{id:string;type:"approve"|"reject"}|null>(null);
+  const [bookingReason,setBookingReason]=useState("");
+  const visible=bookings.filter(item=>(status==="All"||item.status===status)&&(property==="All properties"||homes[item.home].title===property)&&(!from||item.start>=from)&&(!to||item.start<=to)&&(!user||`${item.renter} ${item.owner}`.toLowerCase().includes(user.toLowerCase())));
+  const current=bookings.find(item=>item.id===detail);
+  const deleting=bookings.find(item=>item.id===deleteTarget);
+  const decidingBooking=bookings.find(item=>item.id===bookingDecision?.id);
+  const tone=(value:string):"success"|"warning"|"danger"|"neutral"=>value==="Approved"||value==="Confirmed"?"success":value==="Pending"?"warning":value==="Rejected"?"danger":"neutral";
+  const update=(id:string,value:string)=>setBookings(items=>items.map(item=>item.id===id?{...item,status:value,payment:value==="Approved"?"Deposit pending":value==="Rejected"?"Not charged":item.payment}:item));
+  const clear=()=>{setStatus("All");setFrom("");setTo("");setProperty("All properties");setUser("");};
+  return <div className="admin-bookings-page"><div className="admin-bookings-head"><div><p className="eyebrow">PLATFORM OPERATIONS</p><h1>Booking Management</h1><p>Monitor and manage reservations across the platform.</p></div><div><Badge tone="warning">{bookings.filter(item=>item.status==="Pending").length} pending</Badge><Button variant="secondary"><Icon name="arrow" size={14}/> Export Bookings</Button></div></div>
+    <section className="admin-booking-filters"><div className="admin-booking-status-tabs">{["All","Pending","Approved","Confirmed","Rejected","Cancelled"].map(value=><button className={status===value?"active":""} onClick={()=>setStatus(value)} key={value}>{value}</button>)}</div><div className="admin-booking-filter-row"><label><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><label><span>Property</span><select value={property} onChange={e=>setProperty(e.target.value)}><option>All properties</option>{homes.map(home=><option key={home.title}>{home.title}</option>)}</select></label><label className="booking-user-filter"><span>User</span><div><Icon name="search" size={14}/><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Renter or owner"/></div></label><Button variant="ghost" onClick={clear}>Reset</Button></div></section>
+    {visible.length?<section className="admin-bookings-table-wrap"><div className="admin-bookings-table-head"><span>Booking ID</span><span>Property</span><span>Renter</span><span>Owner</span><span>Start Date</span><span>End Date</span><span>Amount</span><span>Status</span><span>Actions</span></div><div className="admin-bookings-table">{visible.map(item=><article key={item.id}><strong className="admin-booking-id">{item.id}</strong><div className="admin-booking-property"><img src={homes[item.home].image} alt=""/><span><strong>{homes[item.home].title}</strong><small>{homes[item.home].place.split("·")[0]}</small></span></div><div className="admin-booking-person"><span className="avatar">{item.renterInitials}</span><strong>{item.renter}</strong></div><div className="admin-booking-person owner"><span className="avatar">{item.ownerInitials}</span><strong>{item.owner}</strong></div><span className="admin-booking-date">{item.startLabel}</span><span className="admin-booking-date">{item.endLabel}</span><strong className="admin-booking-amount">{item.amount}</strong><Badge tone={tone(item.status)}>{item.status}</Badge><div className="admin-booking-row-actions"><button onClick={()=>setDetail(item.id)}><Icon name="eye" size={13}/> Details</button>{item.status==="Pending"&&<><button className="approve" onClick={()=>{setBookingDecision({id:item.id,type:"approve"});setBookingReason("");}}>Approve</button><button className="reject" onClick={()=>{setBookingDecision({id:item.id,type:"reject"});setBookingReason("");}}>Reject</button></>}<button className="delete" onClick={()=>setDeleteTarget(item.id)} aria-label={`Delete ${item.id}`}><Icon name="more" size={13}/></button></div></article>)}</div></section>:<div className="admin-bookings-empty"><span><Icon name="calendar" size={28}/></span><h2>No bookings found</h2><p>No reservations match the selected filters.</p><Button variant="secondary" onClick={clear}>Clear Filters</Button></div>}
+    {current&&<div className="admin-drawer-backdrop" onMouseDown={()=>setDetail(null)}><aside className="admin-booking-drawer" role="dialog" aria-modal="true" aria-label={`Booking details ${current.id}`} onMouseDown={e=>e.stopPropagation()}><div className="admin-drawer-title"><div><p className="eyebrow">BOOKING OVERSIGHT · {current.id}</p><h2>Booking Details</h2></div><button className="icon-button" onClick={()=>setDetail(null)}>×</button></div><section className="booking-drawer-property"><img src={homes[current.home].image} alt=""/><div><h3>{homes[current.home].title}</h3><p><Icon name="pin" size={13}/>{homes[current.home].place}</p><span>{homes[current.home].meta}</span></div><Badge tone={tone(current.status)}>{current.status}</Badge></section><div className="booking-drawer-content"><section className="booking-party-grid"><article><span className="avatar">{current.renterInitials}</span><div><small>RENTER</small><strong>{current.renter}</strong><p>Verified · {current.renter.toLowerCase().replace(" ",".")}@example.com</p></div></article><article><span className="avatar">{current.ownerInitials}</span><div><small>PROPERTY OWNER</small><strong>{current.owner}</strong><p>Verified owner · 4.9 rating</p></div></article></section><section className="admin-booking-info-card"><div className="admin-drawer-section-head"><h3>Reservation Information</h3><p>Dates and financial overview</p></div><div className="admin-booking-info-grid"><span><small>START DATE</small><strong>{current.startLabel}</strong></span><span><small>END DATE</small><strong>{current.endLabel}</strong></span><span><small>TOTAL AMOUNT</small><strong>{current.amount}</strong></span><span><small>DURATION</small><strong>6 months</strong></span></div></section><section className="admin-booking-info-card"><div className="admin-drawer-section-head"><h3>Payment Information</h3><p>Current transaction state</p></div><div className="admin-payment-row"><span><Icon name="star" size={16}/></span><div><small>PAYMENT STATUS</small><strong>{current.payment}</strong><p>Transaction reference: TX-{current.id.slice(3)}2</p></div><Badge tone={current.payment==="Paid"?"success":current.payment==="Not charged"||current.payment==="Refunded"?"neutral":"warning"}>{current.payment}</Badge></div></section><section className="admin-booking-info-card"><div className="admin-drawer-section-head"><h3>Booking Timeline</h3><p>Reservation lifecycle</p></div><div className="admin-booking-timeline">{[["Request Submitted","12 Dec · 10:24 AM",true],["Owner Review","12 Dec · 11:08 AM",current.status!=="Pending"],["Booking Approved","Decision recorded",["Approved","Confirmed"].includes(current.status)],["Payment Confirmed","Payment successfully received",current.status==="Confirmed"]].map((event,i)=><article className={event[2]?"complete":i===1&&current.status==="Pending"?"current":""} key={String(event[0])}><span>{event[2]?"✓":i+1}</span><div><strong>{event[0]}</strong><p>{event[1]}</p></div></article>)}</div></section></div><footer className="booking-drawer-actions"><Button variant="secondary" onClick={()=>setDetail(null)}>Close Drawer</Button>{current.status==="Pending"&&<><Button variant="destructive" onClick={()=>{setBookingDecision({id:current.id,type:"reject"});setBookingReason("");}}>Reject</Button><Button onClick={()=>{setBookingDecision({id:current.id,type:"approve"});setBookingReason("");}}>Approve</Button></>}<Button variant="destructive" onClick={()=>setDeleteTarget(current.id)}>Delete</Button></footer></aside></div>}
+    {decidingBooking&&bookingDecision&&<ConfirmationModal type={bookingDecision.type} title={bookingDecision.type==="approve"?"Approve this booking?":"Reject this booking?"} description={bookingDecision.type==="approve"?"Confirm this reservation and notify the renter and owner.":"Reject this reservation and notify both parties."} confirmLabel={bookingDecision.type==="approve"?"Confirm":"Reject"} onCancel={()=>setBookingDecision(null)} onConfirm={()=>{update(decidingBooking.id,bookingDecision.type==="approve"?"Approved":"Rejected");setBookingDecision(null);}} reason={bookingReason} onReasonChange={bookingDecision.type==="reject"?setBookingReason:undefined} reasonLabel="Reason for rejection"><div className="confirmation-property"><img src={homes[decidingBooking.home].image} alt=""/><div><small>BOOKING · {decidingBooking.id}</small><strong>{homes[decidingBooking.home].title}</strong><span>{decidingBooking.renter} · {decidingBooking.startLabel} – {decidingBooking.endLabel}</span></div></div></ConfirmationModal>}
+    {deleting&&<ConfirmationModal type="delete" title="Delete this item?" description="This action cannot be undone." confirmLabel="Delete" onCancel={()=>setDeleteTarget(null)} onConfirm={()=>{setBookings(items=>items.filter(item=>item.id!==deleteTarget));setDeleteTarget(null);setDetail(null);}}><div className="confirmation-property"><img src={homes[deleting.home].image} alt=""/><div><small>BOOKING · {deleting.id}</small><strong>{homes[deleting.home].title}</strong><span>{deleting.renter} · {deleting.amount}</span></div></div></ConfirmationModal>}
+  </div>;
+}
+
+function AdminPaymentsReports() {
+  const transactions = [
+    {id:"TX-8042",user:"Aisha Khan",initials:"AK",userType:"Owner",home:0,amount:"৳48,000",numeric:48000,status:"Completed",date:"2026-12-14",dateLabel:"14 Dec 2026"},
+    {id:"TX-8038",user:"Farah Ahmed",initials:"FA",userType:"Renter",home:0,amount:"৳96,000",numeric:96000,status:"Completed",date:"2026-12-12",dateLabel:"12 Dec 2026"},
+    {id:"TX-8031",user:"Nadia Rahman",initials:"NR",userType:"Owner",home:1,amount:"৳36,500",numeric:36500,status:"Pending",date:"2026-12-10",dateLabel:"10 Dec 2026"},
+    {id:"TX-8024",user:"Maliha Noor",initials:"MN",userType:"Renter",home:3,amount:"৳32,000",numeric:32000,status:"Completed",date:"2026-12-08",dateLabel:"08 Dec 2026"},
+    {id:"TX-8019",user:"Rashed Karim",initials:"RK",userType:"Owner",home:2,amount:"৳24,000",numeric:24000,status:"Failed",date:"2026-12-05",dateLabel:"05 Dec 2026"},
+    {id:"TX-8012",user:"Rafi Islam",initials:"RI",userType:"Renter",home:1,amount:"৳73,000",numeric:73000,status:"Refunded",date:"2026-12-02",dateLabel:"02 Dec 2026"},
+    {id:"TX-8004",user:"Tanvir Hasan",initials:"TH",userType:"Owner",home:4,amount:"৳42,000",numeric:42000,status:"Completed",date:"2026-11-29",dateLabel:"29 Nov 2026"},
+  ];
+  const [from,setFrom]=useState("");
+  const [to,setTo]=useState("");
+  const [status,setStatus]=useState("All statuses");
+  const [userType,setUserType]=useState("All user types");
+  const [notice,setNotice]=useState("");
+  const visible=transactions.filter(item=>(status==="All statuses"||item.status===status)&&(userType==="All user types"||item.userType===userType)&&(!from||item.date>=from)&&(!to||item.date<=to));
+  const completed=transactions.filter(item=>item.status==="Completed");
+  const tone=(value:string):"success"|"warning"|"danger"|"neutral"=>value==="Completed"?"success":value==="Pending"?"warning":value==="Failed"?"danger":"neutral";
+  const notify=(message:string)=>{setNotice(message);window.setTimeout(()=>setNotice(""),2200);};
+  const downloadCsv=()=>{const rows=[["Transaction ID","User","User Type","Property","Amount","Status","Date"],...visible.map(item=>[item.id,item.user,item.userType,homes[item.home].title,String(item.numeric),item.status,item.date])];const csv=rows.map(row=>row.map(value=>`"${value.replace(/"/g,'""')}"`).join(",")).join("\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));const link=document.createElement("a");link.href=url;link.download="rentnest-transactions.csv";link.click();URL.revokeObjectURL(url);notify("CSV report downloaded");};
+  return <div className="admin-finance-page">{notice&&<div className="admin-report-toast"><Icon name="settings" size={15}/>{notice}</div>}<div className="admin-finance-head"><div><p className="eyebrow">FINANCIAL OPERATIONS</p><h1>Payments & Reports</h1><p>Monitor platform revenue, settlements, and transaction activity.</p></div><div><Button variant="secondary" onClick={()=>notify("Report prepared successfully")}><Icon name="arrow" size={14}/> Export Report</Button><Button variant="secondary" onClick={()=>notify("PDF report generated")}><Icon name="paperclip" size={14}/> Generate PDF</Button><Button onClick={downloadCsv}><Icon name="arrow" size={14}/> Download CSV</Button></div></div>
+    <section className="admin-finance-summary">{[
+      ["star","TOTAL REVENUE","৳8,942,500","All-time processed volume","up"],
+      ["calendar","MONTHLY REVENUE","৳684,500","+14.2% vs last month","up"],
+      ["settings","COMPLETED TRANSACTIONS",completed.length.toLocaleString(),"98.6% completion rate","neutral"],
+      ["more","PENDING PAYMENTS","৳156,000","4 payments awaiting settlement","attention"],
+    ].map(item=><article key={item[1]}><span className={`admin-finance-icon ${item[4]}`}><Icon name={item[0] as IconName}/></span><div><small>{item[1]}</small><strong>{item[2]}</strong><p className={item[4]}>{item[3]}</p></div></article>)}</section>
+    <div className="admin-finance-overview"><section className="admin-revenue-chart-card"><div className="admin-panel-head"><div><h2>Revenue Performance</h2><p>Processed platform volume over six months</p></div><select aria-label="Chart period"><option>Last 6 months</option><option>This year</option></select></div><div className="admin-revenue-total"><strong>৳3.84M</strong><span>+21.4% period growth</span></div><div className="admin-revenue-chart" role="img" aria-label="Revenue increased between July and December"><div className="finance-chart-scale"><span>৳800k</span><span>৳600k</span><span>৳400k</span><span>৳200k</span><span>৳0</span></div><div className="finance-chart-bars">{[["Jul","f1","৳480k"],["Aug","f2","৳526k"],["Sep","f3","৳598k"],["Oct","f4","৳642k"],["Nov","f5","৳710k"],["Dec","f6","৳684k"]].map(item=><div key={item[0]}><span>{item[2]}</span><i className={item[1]}/><small>{item[0]}</small></div>)}</div></div></section><aside className="admin-settlement-card"><div className="admin-panel-head"><div><h2>Settlement Overview</h2><p>Current payment distribution</p></div></div><div className="settlement-ring"><div><strong>94.8%</strong><small>SETTLED</small></div></div><ul><li><i className="completed"/><span>Completed</span><strong>৳528,500</strong></li><li><i className="pending"/><span>Pending</span><strong>৳156,000</strong></li><li><i className="refunded"/><span>Refunded</span><strong>৳73,000</strong></li></ul></aside></div>
+    <section className="admin-transactions-panel"><div className="admin-transactions-toolbar"><div><h2>Transactions</h2><p>{visible.length} financial records</p></div><div><label><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><label><span>Payment Status</span><select value={status} onChange={e=>setStatus(e.target.value)}><option>All statuses</option><option>Completed</option><option>Pending</option><option>Failed</option><option>Refunded</option></select></label><label><span>User Type</span><select value={userType} onChange={e=>setUserType(e.target.value)}><option>All user types</option><option>Renter</option><option>Owner</option><option>Admin</option></select></label></div></div>{visible.length?<><div className="admin-transactions-head"><span>Transaction ID</span><span>User</span><span>Property</span><span>Amount</span><span>Payment Status</span><span>Date</span></div><div className="admin-transactions-table">{visible.map(item=><article key={item.id}><strong>{item.id}</strong><div className="finance-user"><span className="avatar">{item.initials}</span><p><strong>{item.user}</strong><small>{item.userType}</small></p></div><div className="finance-property"><img src={homes[item.home].image} alt=""/><p><strong>{homes[item.home].title}</strong><small>{homes[item.home].place.split("·")[0]}</small></p></div><strong className="finance-amount">{item.amount}</strong><Badge tone={tone(item.status)}>{item.status}</Badge><span className="finance-date">{item.dateLabel}</span></article>)}</div></>:<div className="admin-finance-empty"><Icon name="star" size={28}/><h2>No transactions found</h2><p>Adjust the date, status, or user-type filters.</p><Button variant="secondary" onClick={()=>{setFrom("");setTo("");setStatus("All statuses");setUserType("All user types");}}>Clear Filters</Button></div>}</section>
+  </div>;
+}
+
+function AnalyticsChart({title,description,data,labels,type,valueLabel}:{title:string;description:string;data:number[];labels:string[];type:"line"|"bar";valueLabel:(value:number)=>string}) {
+  const max=Math.max(...data)*1.12;
+  const points=data.map((value,index)=>`${index*(100/(data.length-1))},${92-(value/max)*72}`).join(" ");
+  return <section className="analytics-chart-card"><div className="analytics-chart-head"><div><h2>{title}</h2><p>{description}</p></div><Badge tone="success">↗ Growth</Badge></div><div className={`analytics-visual ${type}`} role="img" aria-label={`${title}: ${data.map(valueLabel).join(", ")}`}><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><g className="analytics-grid-lines"><line x1="0" y1="20" x2="100" y2="20"/><line x1="0" y1="44" x2="100" y2="44"/><line x1="0" y1="68" x2="100" y2="68"/><line x1="0" y1="92" x2="100" y2="92"/></g>{type==="line"?<><polygon className="analytics-area" points={`0,92 ${points} 100,92`}/><polyline className="analytics-line" points={points}/>{data.map((value,index)=><circle key={index} cx={index*(100/(data.length-1))} cy={92-(value/max)*72} r="1.5"><title>{valueLabel(value)}</title></circle>)}</>:data.map((value,index)=>{const width=70/data.length;const height=(value/max)*72;return <rect key={index} x={index*(100/data.length)+4} y={92-height} width={width} height={height} rx="1"><title>{valueLabel(value)}</title></rect>;})}</svg></div><div className="analytics-axis">{labels.map(label=><span key={label}>{label}</span>)}</div><div className="analytics-chart-summary"><span><small>PERIOD TOTAL</small><strong>{valueLabel(data.reduce((sum,value)=>sum+value,0))}</strong></span><span><small>AVERAGE</small><strong>{valueLabel(Math.round(data.reduce((sum,value)=>sum+value,0)/data.length))}</strong></span><span><small>PEAK</small><strong>{valueLabel(Math.max(...data))}</strong></span></div></section>;
+}
+
+function AdminAnalytics() {
+  type Range="Today"|"This Week"|"This Month"|"This Year";
+  const [range,setRange]=useState<Range>("This Month");
+  const configurations:Record<Range,{labels:string[];metrics:string[];growth:string[];users:number[];listings:number[];bookings:number[];revenue:number[]}> = {
+    "Today":{labels:["8 AM","10 AM","12 PM","2 PM","4 PM","Now"],metrics:["25,430","86","24","142","৳684K"],growth:["+0.3%","+12.6%","+8.1%","+4.2%","+9.8%"],users:[8,17,29,44,65,86],listings:[2,5,4,7,3,3],bookings:[12,21,34,27,31,17],revenue:[42,88,126,174,148,106]},
+    "This Week":{labels:["Mon","Tue","Wed","Thu","Fri","Sat"],metrics:["25,430","542","168","984","৳3.8M"],growth:["+2.1%","+9.4%","+11.8%","+6.7%","+14.2%"],users:[68,82,76,94,106,116],listings:[18,25,21,32,38,34],bookings:[116,148,132,177,205,206],revenue:[420,518,486,672,818,886]},
+    "This Month":{labels:["Week 1","Week 2","Week 3","Week 4","Week 5","Now"],metrics:["25,430","2,184","684","4,250","৳8.94M"],growth:["+8.2%","+14.7%","+12.3%","+9.6%","+18.4%"],users:[320,418,506,621,718,842],listings:[92,104,128,116,142,102],bookings:[540,618,704,756,822,810],revenue:[1020,1240,1378,1610,1794,1898]},
+    "This Year":{labels:["Jan","Mar","May","Jul","Sep","Dec"],metrics:["25,430","18,942","8,540","28,450","৳84.6M"],growth:["+42.8%","+38.4%","+32.1%","+29.7%","+46.2%"],users:[1250,1780,2240,3100,3980,4592],listings:[480,596,682,744,818,926],bookings:[1420,1880,2260,2780,3260,3840],revenue:[6400,8200,10400,12600,14800,17200]},
+  };
+  const current=configurations[range];
+  const metricData=[["users","TOTAL USERS","Platform accounts"],["plus","NEW USERS",`Added during ${range.toLowerCase()}`],["building","NEW LISTINGS","Submitted properties"],["calendar","BOOKINGS","Reservations created"],["star","REVENUE","Processed volume"]];
+  return <div className="admin-analytics-page"><div className="admin-analytics-head"><div><p className="eyebrow">BUSINESS INTELLIGENCE</p><h1>Analytics Dashboard</h1><p>Understand platform growth, engagement, and financial performance.</p></div><div className="analytics-range">{(["Today","This Week","This Month","This Year"] as Range[]).map(value=><button className={range===value?"active":""} onClick={()=>setRange(value)} key={value}>{value}</button>)}</div></div>
+    <section className="analytics-metrics">{metricData.map((item,index)=><article key={item[1]}><span><Icon name={item[0] as IconName}/></span><div><small>{item[1]}</small><strong>{current.metrics[index]}</strong><p><b>{current.growth[index]}</b> {item[2]}</p></div></article>)}</section>
+    <div className="analytics-chart-grid"><AnalyticsChart title="User Growth" description={`New account acquisition · ${range}`} data={current.users} labels={current.labels} type="line" valueLabel={value=>value.toLocaleString()}/><AnalyticsChart title="Listing Growth" description={`Property submissions · ${range}`} data={current.listings} labels={current.labels} type="bar" valueLabel={value=>value.toLocaleString()}/><AnalyticsChart title="Booking Trend" description={`Reservations created · ${range}`} data={current.bookings} labels={current.labels} type="bar" valueLabel={value=>value.toLocaleString()}/><AnalyticsChart title="Revenue" description={`Processed payment volume · ${range}`} data={current.revenue} labels={current.labels} type="line" valueLabel={value=>`৳${value.toLocaleString()}K`}/></div>
+  </div>;
+}
+
+function AdminActivityLogs() {
+  const logs = [
+    {id:"EVT-98421",timestamp:"2026-12-14T14:32:18",date:"2026-12-14",dateLabel:"14 Dec 2026",time:"2:32:18 PM",actor:"Admin Rahman",initials:"AR",actorType:"Administrator",action:"Listing Approved",type:"Listing",target:"LS-2084",description:"Admin approved listing “Modern Apartment in Gulshan”.",status:"Success",ip:"103.82.14.21"},
+    {id:"EVT-98418",timestamp:"2026-12-14T13:48:05",date:"2026-12-14",dateLabel:"14 Dec 2026",time:"1:48:05 PM",actor:"Admin Rahman",initials:"AR",actorType:"Administrator",action:"User Suspended",type:"User",target:"US-1042",description:"User account suspended after a policy review.",status:"Warning",ip:"103.82.14.21"},
+    {id:"EVT-98402",timestamp:"2026-12-14T11:17:42",date:"2026-12-14",dateLabel:"14 Dec 2026",time:"11:17:42 AM",actor:"System Worker",initials:"SW",actorType:"System",action:"Booking Deleted",type:"Booking",target:"BK-3081",description:"Expired booking was deleted by automated retention policy.",status:"Success",ip:"Internal"},
+    {id:"EVT-98396",timestamp:"2026-12-14T10:56:09",date:"2026-12-14",dateLabel:"14 Dec 2026",time:"10:56:09 AM",actor:"Aisha Khan",initials:"AK",actorType:"Owner",action:"Property Updated",type:"Property",target:"LS-2071",description:"Owner updated property pricing and availability.",status:"Success",ip:"45.125.220.18"},
+    {id:"EVT-98374",timestamp:"2026-12-13T18:22:31",date:"2026-12-13",dateLabel:"13 Dec 2026",time:"6:22:31 PM",actor:"Maliha Noor",initials:"MN",actorType:"Renter",action:"Login Failed",type:"Authentication",target:"US-1018",description:"Three failed authentication attempts detected.",status:"Failed",ip:"103.114.96.72"},
+    {id:"EVT-98351",timestamp:"2026-12-13T15:04:17",date:"2026-12-13",dateLabel:"13 Dec 2026",time:"3:04:17 PM",actor:"Payment Service",initials:"PS",actorType:"System",action:"Payment Settled",type:"Payment",target:"TX-8042",description:"Owner payout completed and settlement confirmed.",status:"Success",ip:"Internal"},
+    {id:"EVT-98312",timestamp:"2026-12-12T12:39:54",date:"2026-12-12",dateLabel:"12 Dec 2026",time:"12:39:54 PM",actor:"Admin Rahman",initials:"AR",actorType:"Administrator",action:"Listing Rejected",type:"Listing",target:"LS-2069",description:"Listing rejected because ownership documents were incomplete.",status:"Warning",ip:"103.82.14.21"},
+    {id:"EVT-98284",timestamp:"2026-12-12T09:11:26",date:"2026-12-12",dateLabel:"12 Dec 2026",time:"9:11:26 AM",actor:"Farah Ahmed",initials:"FA",actorType:"Renter",action:"Booking Created",type:"Booking",target:"BK-3108",description:"New six-month rental request submitted.",status:"Success",ip:"27.147.184.39"},
+  ];
+  const [type,setType]=useState("All actions");
+  const [actor,setActor]=useState("");
+  const [from,setFrom]=useState("");
+  const [to,setTo]=useState("");
+  const [notice,setNotice]=useState(false);
+  const visible=logs.filter(log=>(type==="All actions"||log.type===type)&&(!actor||log.actor.toLowerCase().includes(actor.toLowerCase()))&&(!from||log.date>=from)&&(!to||log.date<=to));
+  const clear=()=>{setType("All actions");setActor("");setFrom("");setTo("");};
+  const exportLogs=()=>{const rows=[["Event ID","Timestamp","Actor","Actor Type","Action","Target","Description","Status","IP Address"],...visible.map(log=>[log.id,log.timestamp,log.actor,log.actorType,log.action,log.target,log.description,log.status,log.ip])];const csv=rows.map(row=>row.map(value=>`"${value.replace(/"/g,'""')}"`).join(",")).join("\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));const link=document.createElement("a");link.href=url;link.download="rentnest-activity-logs.csv";link.click();URL.revokeObjectURL(url);setNotice(true);window.setTimeout(()=>setNotice(false),2000);};
+  const tone=(value:string):"success"|"warning"|"danger"=>value==="Success"?"success":value==="Warning"?"warning":"danger";
+  return <div className="admin-logs-page">{notice&&<div className="admin-report-toast"><Icon name="lock" size={15}/>Audit log exported</div>}<div className="admin-logs-head"><div><p className="eyebrow">SECURITY & COMPLIANCE</p><h1>Activity Logs</h1><p>Track important system actions and administrative events.</p></div><Button variant="secondary" onClick={exportLogs}><Icon name="arrow" size={14}/> Export Audit Log</Button></div>
+    <section className="audit-integrity-banner"><span><Icon name="lock" size={17}/></span><div><strong>Immutable audit trail</strong><p>Events are cryptographically recorded and retained for 365 days. Log entries cannot be edited or deleted.</p></div><Badge tone="success">Integrity verified</Badge></section>
+    <section className="admin-log-filters"><label><span>Action Type</span><select value={type} onChange={e=>setType(e.target.value)}><option>All actions</option><option>Listing</option><option>User</option><option>Booking</option><option>Property</option><option>Authentication</option><option>Payment</option></select></label><label className="audit-user-filter"><span>User / Actor</span><div><Icon name="search" size={14}/><input value={actor} onChange={e=>setActor(e.target.value)} placeholder="Search actor name"/></div></label><label><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><Button variant="ghost" onClick={clear}>Reset</Button></section>
+    {visible.length?<section className="admin-log-table-wrap"><div className="admin-log-table-head"><span>Timestamp</span><span>Admin / User</span><span>Action</span><span>Target</span><span>Description</span><span>Status</span></div><div className="admin-log-table">{visible.map(log=><article key={log.id}><div className="audit-timestamp"><strong>{log.dateLabel}</strong><span>{log.time}</span><small>{log.id}</small></div><div className="audit-actor"><span className="avatar">{log.initials}</span><p><strong>{log.actor}</strong><small>{log.actorType}</small></p></div><span className={`audit-action action-${log.type.toLowerCase()}`}><Icon name={log.type==="Listing"||log.type==="Property"?"building":log.type==="Booking"?"calendar":log.type==="Payment"?"star":log.type==="Authentication"?"lock":"users"} size={13}/>{log.action}</span><strong className="audit-target">{log.target}</strong><div className="audit-description"><p>{log.description}</p><small>Source IP: {log.ip}</small></div><Badge tone={tone(log.status)}>{log.status}</Badge></article>)}</div><footer className="audit-table-footer"><span>Showing {visible.length} of {logs.length} recorded events</span><p><Icon name="lock" size={12}/> Read-only security record</p></footer></section>:<div className="admin-log-empty"><span><Icon name="lock" size={27}/></span><h2>No activity logs found</h2><p>No audit events match the selected filters.</p><Button variant="secondary" onClick={clear}>Clear Filters</Button></div>}
+  </div>;
+}
+
+function AdminSystemSettings() {
+  const {user,profileInput,saveProfile,saving,profileError,resetProfile,profileSaved} = useProfileForm();
+  const [modal,setModal]=useState<"password"|"sessions"|"maintenance"|"delete"|null>(null);
+  const [maintenance,setMaintenance]=useState(false);
+  const [deleteConfirm,setDeleteConfirm]=useState("");
+  const [saved,setSaved]=useState(false);
+  const [notifications,setNotifications]=useState({security:true,moderation:true,payments:true,system:true,reports:false});
+  const notifySaved=()=>{setSaved(true);window.setTimeout(()=>setSaved(false),1800);};
+  const toggle=(key:keyof typeof notifications)=>setNotifications(current=>({...current,[key]:!current[key]}));
+  return <div className="admin-system-settings">{saved&&<div className="admin-report-toast"><Icon name="settings" size={15}/>Settings saved successfully</div>}<div className="admin-settings-head"><div><p className="eyebrow">PLATFORM ADMINISTRATION</p><h1>System Settings</h1><p>Manage administrator access and platform configuration.</p></div><Badge tone={maintenance?"warning":"success"}>{maintenance?"Maintenance active":"All systems operational"}</Badge></div>
+    <div className="admin-settings-layout"><aside className="admin-settings-nav"><p>SETTINGS</p><button className="active" onClick={()=>document.getElementById("admin-account")?.scrollIntoView({behavior:"smooth"})}><Icon name="users" size={15}/>Account</button><button onClick={()=>document.getElementById("admin-security")?.scrollIntoView({behavior:"smooth"})}><Icon name="lock" size={15}/>Security</button><button onClick={()=>document.getElementById("admin-platform")?.scrollIntoView({behavior:"smooth"})}><Icon name="settings" size={15}/>Platform</button><button onClick={()=>document.getElementById("admin-notifications")?.scrollIntoView({behavior:"smooth"})}><Icon name="bell" size={15}/>Notifications</button><button className="danger" onClick={()=>document.getElementById("admin-danger")?.scrollIntoView({behavior:"smooth"})}><Icon name="more" size={15}/>Danger Zone</button></aside>
+      <div className="admin-settings-sections"><section className="admin-settings-card" id="admin-account"><div className="admin-settings-card-head"><div><h2>Admin Profile</h2><p>Account information used across the administration workspace.</p></div><Badge>{user?.role}</Badge></div><div className="admin-profile-summary"><span className="avatar">{initials(user?.name ?? "")}</span><div><strong>{user?.name}</strong><p>{user?.email}</p><small>{user?.phone || "Phone not provided"}</small></div><Button variant="secondary">Change Photo</Button></div><div className="admin-settings-form"><label><span>Full Name</span><input {...profileInput("name")}/></label><label><span>Username</span><input {...profileInput("username")}/></label><label><span>Email Address</span><input type="email" {...profileInput("email")}/></label><label><span>Administrator Role</span><input value={user?.role ?? ""} readOnly/></label></div><div className="admin-settings-actions"><Button variant="secondary" onClick={resetProfile}>Cancel</Button><LoadingButton loading={saving} onClick={()=>void saveProfile()}>Save Profile</LoadingButton>{profileError&&<FormError message={profileError}/>} {profileSaved&&<span>Changes saved</span>}</div></section>
+      <section className="admin-settings-card" id="admin-security"><div className="admin-settings-card-head"><div><h2>Security</h2><p>Protect administrator access and manage authenticated devices.</p></div></div><div className="admin-security-list"><article><span><Icon name="lock"/></span><div><strong>Password</strong><p>Last updated 42 days ago · Two-factor authentication enabled</p></div><Button variant="secondary" onClick={()=>setModal("password")}>Change Password</Button></article><article><span><Icon name="settings"/></span><div><strong>Active Sessions</strong><p>3 authenticated administrator sessions</p></div><Button variant="secondary" onClick={()=>setModal("sessions")}>Manage Sessions</Button></article></div><div className="admin-current-session"><i/><div><strong>Current session</strong><p>Chrome on Windows · Dhaka, Bangladesh · 103.82.14.21</p></div><Badge tone="success">Active now</Badge></div></section>
+      <section className="admin-settings-card" id="admin-platform"><div className="admin-settings-card-head"><div><h2>General Configuration</h2><p>Core platform behavior and operational defaults.</p></div></div><div className="admin-settings-form"><label><span>Platform Name</span><input defaultValue="RentNest"/></label><label><span>Support Email</span><input type="email" defaultValue="support@rentnest.com"/></label><label><span>Default Currency</span><select defaultValue="BDT — Bangladeshi Taka"><option>BDT — Bangladeshi Taka</option><option>USD — US Dollar</option></select></label><label><span>Default Time Zone</span><select defaultValue="Asia/Dhaka (UTC+6)"><option>Asia/Dhaka (UTC+6)</option><option>UTC</option></select></label><label><span>Listing Review SLA</span><select defaultValue="Within 24 hours"><option>Within 24 hours</option><option>Within 48 hours</option><option>Within 72 hours</option></select></label><label><span>Session Timeout</span><select defaultValue="30 minutes"><option>30 minutes</option><option>1 hour</option><option>4 hours</option></select></label></div><div className="admin-settings-actions"><Button variant="secondary">Reset Defaults</Button><Button onClick={notifySaved}>Save Configuration</Button></div></section>
+      <section className="admin-settings-card" id="admin-notifications"><div className="admin-settings-card-head"><div><h2>Notification Settings</h2><p>Choose which operational events alert administrators.</p></div></div><div className="admin-notification-settings">{[["security","Security alerts","Suspicious logins, access changes, and policy violations"],["moderation","Moderation queue","New listings and content requiring review"],["payments","Payment incidents","Failed transactions, refunds, and payout issues"],["system","System health","Availability incidents and degraded services"],["reports","Scheduled reports","Weekly platform and financial summaries"]].map(item=><article key={item[0]}><span><Icon name={item[0]==="security"?"lock":item[0]==="moderation"?"building":item[0]==="payments"?"star":item[0]==="system"?"settings":"calendar"} size={16}/></span><div><strong>{item[1]}</strong><p>{item[2]}</p></div><button className={`toggle-switch ${notifications[item[0] as keyof typeof notifications]?"on":""}`} onClick={()=>toggle(item[0] as keyof typeof notifications)} aria-label={`Toggle ${item[1]}`}><i/></button></article>)}</div></section>
+      <section className="admin-settings-card admin-system-danger" id="admin-danger"><div className="admin-settings-card-head"><div><h2>Danger Zone</h2><p>High-impact platform actions requiring administrator confirmation.</p></div></div><article><span><Icon name="settings"/></span><div><strong>Maintenance Mode</strong><p>Temporarily prevent public access while administrators perform platform work.</p><Badge tone={maintenance?"warning":"success"}>{maintenance?"Currently enabled":"Currently disabled"}</Badge></div><Button variant={maintenance?"secondary":"destructive"} onClick={()=>setModal("maintenance")}>{maintenance?"Disable Maintenance":"Enable Maintenance"}</Button></article><article><span><Icon name="more"/></span><div><strong>Delete System Data</strong><p>Permanently remove operational records and platform data. This cannot be undone.</p></div><Button variant="destructive" onClick={()=>setModal("delete")}>Delete System Data</Button></article></section></div></div>
+    {modal&&<div className="modal-backdrop admin-settings-modal-backdrop" onMouseDown={()=>setModal(null)}><section className="modal admin-settings-modal" onMouseDown={e=>e.stopPropagation()}>{modal==="password"?<><div className="modal-header"><div><p className="eyebrow">ADMIN SECURITY</p><h2>Change Password</h2></div><button className="icon-button" onClick={()=>setModal(null)}>×</button></div><p className="modal-description">Update the password for this administrator account.</p><div className="security-form"><label><span>Current Password</span><input type="password" placeholder="Enter current password"/></label><label><span>New Password</span><input type="password" placeholder="At least 12 characters"/></label><label><span>Confirm Password</span><input type="password" placeholder="Repeat new password"/></label></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button><Button onClick={()=>{setModal(null);notifySaved();}}>Update Password</Button></div></>:modal==="sessions"?<><div className="modal-header"><div><p className="eyebrow">AUTHENTICATED DEVICES</p><h2>Active Sessions</h2></div><button className="icon-button" onClick={()=>setModal(null)}>×</button></div><div className="sessions-list">{[["Chrome on Windows","Dhaka · Current session",true],["Safari on macOS","Dhaka · 2 hours ago",false],["Chrome on Android","Chattogram · Yesterday",false]].map(session=><article key={String(session[0])}><span><Icon name="settings"/></span><div><strong>{session[0]}</strong><p>{session[1]}</p></div>{session[2]?<Badge>Current</Badge>:<button>Revoke</button>}</article>)}</div><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Close</Button><Button variant="destructive">Revoke Other Sessions</Button></div></>:modal==="maintenance"?<><div className={`modal-icon ${maintenance?"":"danger"}`}><Icon name="settings"/></div><h2>{maintenance?"Disable maintenance mode?":"Enable maintenance mode?"}</h2><p className="modal-description">{maintenance?"Public access will be restored immediately.":"Renters and owners will be unable to access the application until maintenance mode is disabled."}</p><div className="maintenance-impact"><strong>{maintenance?"Platform access will resume":"This affects all public users"}</strong><p>Administrators will retain access to the control center.</p></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setModal(null)}>Cancel</Button><Button variant={maintenance?"primary":"destructive"} onClick={()=>{setMaintenance(value=>!value);setModal(null);notifySaved();}}>{maintenance?"Restore Access":"Enable Maintenance"}</Button></div></>:<><div className="modal-icon danger"><Icon name="more"/></div><h2>Delete system data?</h2><p className="modal-description">This permanently deletes platform records and cannot be reversed. Production backups may also be affected.</p><label className="delete-confirm-field"><span>Type DELETE SYSTEM to confirm</span><input value={deleteConfirm} onChange={e=>setDeleteConfirm(e.target.value)} placeholder="DELETE SYSTEM"/></label><div className="modal-actions"><Button variant="secondary" onClick={()=>{setModal(null);setDeleteConfirm("");}}>Cancel</Button><Button variant="destructive" disabled={deleteConfirm!=="DELETE SYSTEM"} onClick={()=>{setModal(null);setDeleteConfirm("");}}>Delete System Data</Button></div></>}</section></div>}
+  </div>;
+}
+
+function Settings({ go, ownerMode = false }: { go: (page: string) => void; ownerMode?: boolean }) {
+  const {user,profileInput,saveProfile,saving,profileError,profileSaved,resetProfile} = useProfileForm();
+  const {logout} = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [securityModal, setSecurityModal] = useState<"password"|"sessions"|null>(null);
+  const [preferences, setPreferences] = useState({ booking:true, messages:true, favorites:false, marketing:false });
+  const toggle = (key:keyof typeof preferences) => setPreferences(current=>({...current,[key]:!current[key]}));
+  return <div className={`account-page ${ownerMode?"owner-profile-page":""}`}><div className="account-title"><p className="eyebrow">{ownerMode?"OWNER ACCOUNT":"RENTER ACCOUNT"}</p><h1>Profile & Settings</h1><p>Manage your personal information, security, and account preferences.</p></div>
+    <section className="account-profile-header"><div className="account-avatar">{initials(user?.name ?? "")}<button><Icon name="plus" size={14} /></button></div><div><h2>{user?.name}</h2><p>{user?.email}</p><span className={`role-badge ${ownerMode?"owner":"renter"}`}>{ownerMode?"Owner":"Renter"}</span></div><Button variant="secondary">Change Photo</Button></section>
+    <div className="account-layout"><aside className="account-section-nav"><button className="active" onClick={()=>document.getElementById("personal")?.scrollIntoView({behavior:"smooth"})}><Icon name="users" /> Personal Information</button>{ownerMode&&<button onClick={()=>document.querySelector(".owner-information-card")?.scrollIntoView({behavior:"smooth"})}><Icon name="building" /> Owner Information</button>}<button onClick={()=>document.getElementById("security")?.scrollIntoView({behavior:"smooth"})}><Icon name="lock" /> Security</button><button onClick={()=>document.getElementById("preferences")?.scrollIntoView({behavior:"smooth"})}><Icon name="bell" /> Preferences</button><button className="danger-link" onClick={()=>document.getElementById("danger")?.scrollIntoView({behavior:"smooth"})}><Icon name="settings" /> Danger Zone</button></aside><div className="account-sections">
+      <section className="account-card" id="personal"><div className="account-card-head"><div><h2>Personal Information</h2><p>Update the personal details connected to your account.</p></div>{profileSaved&&<span className="saved-confirmation">✓ Changes saved</span>}</div><div className="account-form-grid"><label><span>Full Name</span><input {...profileInput("name")} /></label><label><span>Username</span><input {...profileInput("username")} /></label><label><span>Email Address</span><input type="email" {...profileInput("email")} /></label><label><span>Phone Number</span><input {...profileInput("phone")} /></label></div><div className="account-card-actions"><Button variant="secondary" onClick={resetProfile}>Cancel</Button><LoadingButton loading={saving} onClick={()=>void saveProfile()}>Save Changes</LoadingButton>{profileError&&<FormError message={profileError}/>}</div></section>
+      {ownerMode&&<section className="account-card owner-information-card"><div className="account-card-head"><div><h2>Owner Information</h2><p>Your property-hosting account overview.</p></div><Badge>Verification unavailable</Badge></div><div className="owner-information-grid"><article><span><Icon name="settings" /></span><div><small>VERIFICATION STATUS</small><strong>Not provided</strong><p>Verification information is unavailable</p></div></article><article><span><Icon name="building" /></span><div><small>TOTAL PROPERTIES</small><strong>4 Properties</strong><p>3 active · 1 pending review</p></div></article><article><span><Icon name="calendar" /></span><div><small>MEMBER SINCE</small><strong>Not provided</strong><p>Membership date is unavailable</p></div></article></div></section>}
+      <section className="account-card" id="security"><div className="account-card-head"><div><h2>Security</h2><p>Keep your account protected and review active access.</p></div></div><div className="settings-list"><article><span><Icon name="lock" /></span><div><strong>Change Password</strong><p>Last changed 3 months ago</p></div><Button variant="secondary" onClick={()=>setSecurityModal("password")}>Update Password</Button></article><article><span><Icon name="settings" /></span><div><strong>Sessions</strong><p>Review devices currently signed into your account</p></div><Button variant="secondary" onClick={()=>setSecurityModal("sessions")}>Manage Sessions</Button></article></div><div className="current-session"><i /><div><strong>Current session</strong><p>Chrome on Windows · Dhaka, Bangladesh</p></div><small>Active now</small></div></section>
+      <section className="account-card" id="preferences"><div className="account-card-head"><div><h2>Notification Settings</h2><p>Choose which account updates you want to receive.</p></div></div><div className="preference-list">{[["booking","Booking updates","Approvals, rejections, and booking reminders"],["messages","New messages","Replies and conversations with property owners"],["favorites","Favorite property updates","Availability and price changes for saved homes"],["marketing","RentNest news","Product updates and occasional rental tips"]].map(item=><article key={item[0]}><div><strong>{item[1]}</strong><p>{item[2]}</p></div><button className={`toggle-switch ${preferences[item[0] as keyof typeof preferences]?"on":""}`} onClick={()=>toggle(item[0] as keyof typeof preferences)} aria-label={`Toggle ${item[1]}`}><i /></button></article>)}</div></section>
+      <section className="account-card account-actions-card"><div className="account-card-head"><div><h2>Account Actions</h2><p>Manage access to your RentNest account.</p></div></div><div className="logout-action"><span><Icon name="logout" /></span><div><strong>Logout</strong><p>Sign out of this account on the current device.</p></div><Button variant="secondary" onClick={()=>void logout().then(()=>go("Home")).catch(error=>window.alert(error.message))}>Logout</Button></div></section>
+      <section className="account-card danger-zone" id="danger"><div><span><Icon name="settings" /></span><div><h2>Delete Account</h2><p>Permanently delete your account, {ownerMode?"properties, earnings records":"bookings, favorites"}, and personal data. This action cannot be undone.</p></div></div><Button variant="destructive" onClick={()=>setDeleteOpen(true)}>Delete Account</Button></section>
+    </div></div>
+    {securityModal&&<div className="modal-backdrop" onMouseDown={()=>setSecurityModal(null)}><section className="modal security-modal" onMouseDown={e=>e.stopPropagation()}>{securityModal==="password"?<><div className="modal-header"><div><p className="eyebrow">ACCOUNT SECURITY</p><h2>Change Password</h2></div><button className="icon-button" onClick={()=>setSecurityModal(null)}>×</button></div><p className="modal-description">Choose a strong password that you haven't used before.</p><div className="security-form"><label><span>Current Password</span><input type="password" placeholder="Enter current password" /></label><label><span>New Password</span><input type="password" placeholder="At least 8 characters" /></label><label><span>Confirm New Password</span><input type="password" placeholder="Repeat new password" /></label></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setSecurityModal(null)}>Cancel</Button><Button onClick={()=>setSecurityModal(null)}>Update Password</Button></div></>:<><div className="modal-header"><div><p className="eyebrow">ACTIVE ACCESS</p><h2>Manage Sessions</h2></div><button className="icon-button" onClick={()=>setSecurityModal(null)}>×</button></div><p className="modal-description">Devices currently signed into your RentNest account.</p><div className="sessions-list">{[["Chrome on Windows","Dhaka, Bangladesh · Active now",true],["Safari on iPhone","Dhaka, Bangladesh · 2 hours ago",false],["Chrome on Android","Chattogram, Bangladesh · 4 days ago",false]].map(session=><article key={String(session[0])}><span><Icon name="settings" /></span><div><strong>{session[0]}</strong><p>{session[1]}</p></div>{session[2]?<Badge>Current</Badge>:<button>Revoke</button>}</article>)}</div><div className="modal-actions"><Button variant="secondary" onClick={()=>setSecurityModal(null)}>Close</Button><Button variant="destructive">Sign Out Other Sessions</Button></div></>}</section></div>}
+    {deleteOpen&&<div className="modal-backdrop" onMouseDown={()=>setDeleteOpen(false)}><section className="modal delete-account-modal" onMouseDown={e=>e.stopPropagation()}><div className="modal-icon danger"><Icon name="users" /></div><h2>Delete your RentNest account?</h2><p className="modal-description">{ownerMode?"Your profile, property listings, earnings records, and messages will be permanently removed. This cannot be undone.":"Your profile, saved properties, booking history, and messages will be permanently removed. This cannot be undone."}</p><label className="delete-confirm-field"><span>Type DELETE to confirm</span><input value={deleteConfirm} onChange={e=>setDeleteConfirm(e.target.value)} placeholder="DELETE" /></label><div className="modal-actions"><Button variant="secondary" onClick={()=>{setDeleteOpen(false);setDeleteConfirm("");}}>Keep Account</Button><button className="button button-destructive" disabled={deleteConfirm!=="DELETE"} onClick={()=>go("Home")}>Delete Account</button></div></section></div>}
+  </div>;
 }
 
 function PublicHeader({ go }: { go: (page: string) => void }) {
-  return (
-    <header className="public-header">
-      <button className="brand public-brand" onClick={() => go("Home")}>
-        <span className="brand-mark">
-          <i />
-          <i />
-        </span>
-        <strong>RentNest</strong>
-      </button>
-      <nav className="public-nav">
-        <button onClick={() => go("Discover")}>Browse Properties</button>
-        <button onClick={() => go("Home")}>How It Works</button>
-      </nav>
-      <div className="public-actions">
-        <Button variant="ghost" onClick={() => go("Login")}>
-          Login
-        </Button>
-        <Button onClick={() => go("Register")}>Register</Button>
+  return <header className="public-header">
+    <button className="brand public-brand" onClick={() => go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button>
+    <nav className="public-nav"><button onClick={() => go("Discover")}>Browse Properties</button><button onClick={() => go("About")}>About</button><button onClick={() => go("Home")}>How It Works</button></nav>
+    <div className="public-actions"><Button variant="ghost" onClick={() => go("Login")}>Login</Button><Button onClick={() => go("Register")}>Register</Button></div>
+  </header>;
+}
+
+function Landing({ go, saved, toggleSaved, viewHome, viewProperty }: { viewProperty:(id:number)=>void; go: (page: string) => void; saved: number[]; toggleSaved: (i: number) => void; viewHome: (i: number) => void }) {
+  return <div className="public-page"><PublicHeader go={go} />
+    <section className="landing-hero">
+      <div className="hero-copy"><p className="eyebrow">RENT WITH CONFIDENCE</p><h1>Find Your<br />Perfect Home</h1><p>Discover verified rental properties, connect with owners, and manage your rental journey easily.</p>
+        <div className="hero-actions"><Button onClick={() => go("Discover")}>Browse Properties <Icon name="arrow" /></Button><Button variant="secondary" onClick={() => go("Owner workspace")}>List Your Property</Button></div>
+        <div className="hero-proof"><span><strong>3,000+</strong><small>Verified homes</small></span><span><strong>18k+</strong><small>Happy renters</small></span><span><strong>4.9/5</strong><small>Average rating</small></span></div>
       </div>
-    </header>
-  )
+      <div className="hero-visual"><img src="https://images.unsplash.com/photo-1758448511578-ec292173b70c?auto=format&fit=crop&w=1400&q=85" alt="Premium modern apartment building at sunset" /><div className="floating-home"><span className="verified-mark">✓</span><span><small>VERIFIED LISTINGS</small><strong>Homes you can trust</strong><b>Reviewed before publishing</b></span></div></div>
+      <div className="hero-search">
+        <label><span>Location</span><div><Icon name="pin" /><input placeholder="Where do you want to live?" /></div></label>
+        <label><span>Property type</span><input defaultValue="Apartment" /></label>
+        <label><span>Price range</span><input defaultValue="৳20k – ৳50k" /></label>
+        <label><span>Bedrooms</span><input defaultValue="2+ bedrooms" /></label>
+        <Button onClick={() => go("Discover")}><Icon name="search" /> Search Properties</Button>
+      </div>
+    </section>
+    <section className="public-section"><div className="section-title featured-heading"><div><p className="eyebrow">CURATED FOR YOU</p><h2>Featured Properties</h2><p>Published properties accepting future rental requests.</p></div><Button variant="ghost" onClick={() => go("Discover")}>Explore all properties <Icon name="arrow" /></Button></div><ListingCollection onView={viewProperty} onLogin={()=>go("Login")}/></section>
+    <section className="how-section"><div className="how-intro"><p className="eyebrow">HOW RENTNEST WORKS</p><h2>Your next home,<br />in three simple steps.</h2><p>We bring everything you need into one clear, trusted rental experience.</p></div><div className="steps">{[["search","Browse Properties","Explore available rental listings that match your needs."],["home","View Details","Check photos, amenities, and property information."],["message","Book or Contact Owner","Request a booking or communicate directly with owners."]].map((step, i)=><article className="step" key={step[1]}><span><Icon name={step[0] as IconName} /></span><small>0{i+1}</small><h3>{step[1]}</h3><p>{step[2]}</p></article>)}</div></section>
+    <section className="why-section"><div className="why-heading"><p className="eyebrow">BUILT AROUND TRUST</p><h2>Why renters and owners<br />choose RentNest</h2></div><div className="why-grid">{[["building","Verified Listings","Every property is reviewed before it appears on the marketplace."],["message","Secure Communication","Connect with renters and owners in one protected conversation."],["calendar","Easy Booking","Send and manage rental requests without confusing paperwork."],["settings","Property Management","Powerful tools help owners manage listings, bookings, and more."]].map(feature=><article key={feature[1]}><span><Icon name={feature[0] as IconName} /></span><h3>{feature[1]}</h3><p>{feature[2]}</p></article>)}</div></section>
+    <section className="join-banner"><div><p className="eyebrow">MAKE YOUR MOVE</p><h2>Ready to find your next home?</h2><p>Join thousands of renters and owners finding a better way to rent.</p></div><div><Button variant="secondary" onClick={() => go("Discover")}>Explore Properties</Button><Button onClick={() => go("Register")}>Sign Up Now <Icon name="arrow" /></Button></div></section>
+    <footer className="public-footer"><div className="footer-brand"><button className="brand"><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button><p>A simpler, safer rental journey for everyone.</p></div>{[["Company","About Us","Careers"],["Support","Help Center","Contact"],["Legal","Privacy Policy","Terms"]].map(column=><div key={column[0]}><strong>{column[0]}</strong>{column.slice(1).map(item=><button key={item}>{item}</button>)}</div>)}<p className="copyright">© 2025 RentNest. All rights reserved.</p></footer>
+  </div>;
 }
 
-function Landing({
-  go,
-  viewProperty,
-  onSearch,
-}: {
-  onSearch: (criteria: Partial<Criteria>) => void
-  viewProperty: (id: number) => void
-  go: (page: string) => void
-}) {
-  const [search, setSearch] = useState({
-    location: "",
-    type: "",
-    maxRent: "",
-    bedrooms: "",
-  })
-  return (
-    <div className="public-page">
-      <PublicHeader go={go} />
-      <section className="landing-hero">
-        <div className="hero-copy">
-          <p className="eyebrow">RENT WITH CONFIDENCE</p>
-          <h1>
-            Find Your
-            <br />
-            Perfect Home
-          </h1>
-          <p>
-            Discover verified rental properties, connect with owners, and manage
-            your rental journey easily.
-          </p>
-          <div className="hero-actions">
-            <Button onClick={() => go("Discover")}>
-              Browse Properties <Icon name="arrow" />
-            </Button>
-            <Button variant="secondary" onClick={() => go("Owner workspace")}>
-              List Your Property
-            </Button>
-          </div>
-          <div className="hero-proof">
-            <span>
-              <strong>Reviewed listings</strong>
-              <small>Explore actual available homes</small>
-            </span>
-          </div>
-        </div>
-        <div className="hero-visual">
-          <img
-            src="https://images.unsplash.com/photo-1758448511578-ec292173b70c?auto=format&fit=crop&w=1400&q=85"
-            alt="Premium modern apartment building at sunset"
-          />
-          <div className="floating-home">
-            <span className="verified-mark">✓</span>
-            <span>
-              <small>VERIFIED LISTINGS</small>
-              <strong>Homes you can trust</strong>
-              <b>Reviewed before publishing</b>
-            </span>
-          </div>
-        </div>
-        <div className="hero-search">
-          <label>
-            <span>Location</span>
-            <div>
-              <Icon name="pin" />
-              <input
-                value={search.location}
-                onChange={(e) =>
-                  setSearch({ ...search, location: e.target.value })
-                }
-                placeholder="Where do you want to live?"
-              />
-            </div>
-          </label>
-          <label>
-            <span>Property type</span>
-            <select
-              aria-label="Property type"
-              value={search.type}
-              onChange={(e) => setSearch({ ...search, type: e.target.value })}
-            >
-              <option value="">All types</option>
-              {propertyTypes.map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Maximum rent (BDT)</span>
-            <input
-              type="number"
-              min="0"
-              value={search.maxRent}
-              onChange={(e) =>
-                setSearch({ ...search, maxRent: e.target.value })
-              }
-              placeholder="Any price"
-            />
-          </label>
-          <label>
-            <span>Bedrooms</span>
-            <input
-              type="number"
-              min="0"
-              max="50"
-              value={search.bedrooms}
-              onChange={(e) =>
-                setSearch({ ...search, bedrooms: e.target.value })
-              }
-              placeholder="Any bedrooms"
-            />
-          </label>
-          <Button onClick={() => onSearch(search)}>
-            <Icon name="search" /> Search Properties
-          </Button>
-        </div>
-      </section>
-      <section className="public-section">
-        <div className="section-title featured-heading">
-          <div>
-            <p className="eyebrow">CURATED FOR YOU</p>
-            <h2>Featured Properties</h2>
-            <p>Published properties accepting future rental requests.</p>
-          </div>
-          <Button variant="ghost" onClick={() => go("Discover")}>
-            Explore all properties <Icon name="arrow" />
-          </Button>
-        </div>
-        <ListingCollection onView={viewProperty} onLogin={() => go("Login")} />
-      </section>
-      <section className="how-section">
-        <div className="how-intro">
-          <p className="eyebrow">HOW RENTNEST WORKS</p>
-          <h2>
-            Your next home,
-            <br />
-            in three simple steps.
-          </h2>
-          <p>
-            We bring everything you need into one clear, trusted rental
-            experience.
-          </p>
-        </div>
-        <div className="steps">
-          {[
-            [
-              "search",
-              "Browse Properties",
-              "Explore available rental listings that match your needs.",
-            ],
-            [
-              "home",
-              "View Details",
-              "Check photos, amenities, and property information.",
-            ],
-            [
-              "message",
-              "Book or Contact Owner",
-              "Request a booking or communicate directly with owners.",
-            ],
-          ].map((step, i) => (
-            <article className="step" key={step[1]}>
-              <span>
-                <Icon name={step[0] as IconName} />
-              </span>
-              <small>0{i + 1}</small>
-              <h3>{step[1]}</h3>
-              <p>{step[2]}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="why-section">
-        <div className="why-heading">
-          <p className="eyebrow">BUILT AROUND TRUST</p>
-          <h2>
-            Why renters and owners
-            <br />
-            choose RentNest
-          </h2>
-        </div>
-        <div className="why-grid">
-          {[
-            [
-              "building",
-              "Verified Listings",
-              "Every property is reviewed before it appears on the marketplace.",
-            ],
-            [
-              "message",
-              "Secure Communication",
-              "Connect with renters and owners in one protected conversation.",
-            ],
-            [
-              "calendar",
-              "Easy Booking",
-              "Send and manage rental requests without confusing paperwork.",
-            ],
-            [
-              "settings",
-              "Property Management",
-              "Powerful tools help owners manage listings, bookings, and more.",
-            ],
-          ].map((feature) => (
-            <article key={feature[1]}>
-              <span>
-                <Icon name={feature[0] as IconName} />
-              </span>
-              <h3>{feature[1]}</h3>
-              <p>{feature[2]}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="join-banner">
-        <div>
-          <p className="eyebrow">MAKE YOUR MOVE</p>
-          <h2>Ready to find your next home?</h2>
-          <p>Find your next home or manage your rental property.</p>
-        </div>
-        <div>
-          <Button variant="secondary" onClick={() => go("Discover")}>
-            Explore Properties
-          </Button>
-          <Button onClick={() => go("Register")}>
-            Sign Up Now <Icon name="arrow" />
-          </Button>
-        </div>
-      </section>
-      <footer className="public-footer">
-        <div className="footer-brand">
-          <button className="brand">
-            <span className="brand-mark">
-              <i />
-              <i />
-            </span>
-            <strong>RentNest</strong>
-          </button>
-          <p>A simpler, safer rental journey for everyone.</p>
-        </div>
-        {[
-          ["Company", "Careers"],
-          ["Support", "Help Center", "Contact"],
-          ["Legal", "Privacy Policy", "Terms"],
-        ].map((column) => (
-          <div key={column[0]}>
-            <strong>{column[0]}</strong>
-            {column.slice(1).map((item) => (
-              <button key={item}>{item}</button>
-            ))}
-          </div>
-        ))}
-        <p className="copyright">
-          © {new Date().getFullYear()} RentNest. All rights reserved.
-        </p>
-      </footer>
+function AboutPage({ go }: { go: (page: string) => void }) {
+  const team = [
+    { name: "Nadia Rahman", role: "Co-founder & Product", image: "https://images.unsplash.com/photo-1758691737605-69a0e78bd193?auto=format&fit=crop&w=800&q=85" },
+    { name: "Arif Hasan", role: "Co-founder & Engineering", image: "https://images.unsplash.com/photo-1705645930353-0e335311ef20?auto=format&fit=crop&w=800&q=85" },
+    { name: "Samir Ahmed", role: "Marketplace Operations", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=85" },
+  ];
+  return <div className="public-page about-page"><PublicHeader go={go} />
+    <section className="about-hero"><div className="about-hero-copy"><p className="eyebrow">ABOUT RENTNEST</p><h1>Making Renting<br />Simple and Reliable</h1><p>RentNest connects renters and property owners through an easy and transparent rental experience.</p><div className="hero-actions"><Button onClick={()=>go("Discover")}>Explore Properties <Icon name="arrow" /></Button><Button variant="secondary" onClick={()=>go("Register")}>Join RentNest</Button></div></div><div className="about-hero-art"><div className="about-home-card"><img src={homes[0].image} alt="Bright RentNest apartment" /><div><Badge>Verified home</Badge><strong>Designed around trust</strong><small>Clear details. Direct conversations. Better decisions.</small></div></div><span className="about-orbit orbit-one" /><span className="about-orbit orbit-two" /></div></section>
+    <section className="mission-section"><div className="about-section-heading"><p className="eyebrow">OUR MISSION</p><h2>A better rental experience<br />for everyone involved.</h2><p>Technology should remove uncertainty from renting—not add to it.</p></div><div className="mission-grid">{[["search","Easy Discovery","Find suitable properties quickly with clear details and useful filters."],["message","Secure Communication","Connect directly with property owners through one trusted platform."],["settings","Simple Management","Owners manage properties, requests, and conversations efficiently."]].map((item,i)=><article key={item[1]}><small>0{i+1}</small><span><Icon name={item[0] as IconName} /></span><h3>{item[1]}</h3><p>{item[2]}</p></article>)}</div></section>
+    <section className="story-section"><div className="story-intro"><p className="eyebrow">HOW RENTNEST STARTED</p><h2>Built from a familiar frustration.</h2><p>Finding a rental home should feel exciting. Too often, it feels uncertain, fragmented, and unnecessarily difficult.</p></div><div className="story-timeline">{[["The problem","Renters struggled with incomplete listings and scattered conversations. Owners lacked simple tools to manage genuine interest."],["The solution","RentNest brought verified property discovery, direct communication, booking requests, and management into one coherent experience."],["The vision","A rental marketplace where every person can make confident decisions, supported by transparent information and thoughtful technology."]].map((item,i)=><article key={item[0]}><span>{i+1}</span><div><h3>{item[0]}</h3><p>{item[1]}</p></div></article>)}</div></section>
+    <section className="team-section"><div className="about-section-heading"><p className="eyebrow">MEET THE TEAM</p><h2>Small team. Meaningful mission.</h2><p>We bring product, engineering, and marketplace expertise together to make renting work better.</p></div><div className="team-grid">{team.map(person=><article key={person.name}><img src={person.image} alt={`${person.name}, ${person.role}`} /><div><h3>{person.name}</h3><p>{person.role}</p></div></article>)}</div></section>
+    <section className="about-cta"><div><p className="eyebrow">BUILD YOUR NEXT CHAPTER</p><h2>Find a home—or help someone find theirs.</h2></div><div><Button variant="secondary" onClick={()=>go("Discover")}>Browse homes</Button><Button onClick={()=>go("Register")}>Create an account</Button></div></section>
+    <footer className="public-footer"><div className="footer-brand"><button className="brand" onClick={()=>go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button><p>A simpler, safer rental journey for everyone.</p></div>{[["Company","About Us","Careers"],["Support","Help Center","Contact"],["Legal","Privacy Policy","Terms"]].map(column=><div key={column[0]}><strong>{column[0]}</strong>{column.slice(1).map(item=><button key={item}>{item}</button>)}</div>)}<p className="copyright">© 2025 RentNest. All rights reserved.</p></footer>
+  </div>;
+}
+
+function BrowsePage({ go, saved, toggleSaved, viewHome }: { go: (page: string) => void; saved: number[]; toggleSaved: (i: number) => void; viewHome: (i: number) => void }) {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtered = homes.filter(home => `${home.title} ${home.place} ${home.meta}`.toLowerCase().includes(query.toLowerCase()));
+  const search = () => {
+    setLoading(true);
+    window.setTimeout(() => setLoading(false), 550);
+  };
+  const clear = () => setQuery("");
+  const failed = query.trim().toLowerCase() === "network error";
+  const FilterContent = () => <><div className="filter-head"><div><p className="eyebrow">REFINE RESULTS</p><h3>Filters</h3></div><button onClick={clear}>Reset all</button></div>
+    <fieldset><legend>Price range</legend>{["Any Price","৳0 - ৳10,000","৳10,000 - ৳20,000","৳20,000 - ৳30,000","৳30,000+"].map((x,i)=><label key={x}><input type="radio" name="price" defaultChecked={i===0} />{x}</label>)}</fieldset>
+    <fieldset><legend>Property type</legend>{["Room","Flat","Apartment","Office Area","Parking"].map(x=><label key={x}><input type="checkbox" />{x}</label>)}</fieldset>
+    <fieldset><legend>Bedrooms</legend><div className="bedroom-options">{["Any","1","2","3+"].map((x,i)=><label key={x}><input type="radio" name="beds" defaultChecked={i===0} /><span>{x}</span></label>)}</div></fieldset>
+    <fieldset><legend>Amenities</legend>{["WiFi","Parking","Pets Allowed","Lift","Security"].map(x=><label key={x}><input type="checkbox" />{x}</label>)}</fieldset>
+    <div className="filter-actions"><Button onClick={search}>Apply Filters</Button><Button variant="secondary" onClick={clear}>Reset</Button></div></>;
+  return <div className="public-page browse-page"><PublicHeader go={go} />
+    <section className="browse-hero"><div><p className="eyebrow">DISCOVER YOUR NEXT HOME</p><h1>Find Your Perfect Property</h1><p>Search verified rental homes across Bangladesh.</p></div><div className="browse-search"><Icon name="search" /><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&search()} placeholder="Search by location, property name, or keyword" /><Button onClick={search}>Search</Button></div></section>
+    <div className="browse-layout">
+      <aside className={`filter-sidebar ${filtersOpen ? "open" : ""}`}><FilterContent /></aside>
+      <main className="browse-main"><div className="results-toolbar"><div><button className="mobile-filter" onClick={()=>setFiltersOpen(!filtersOpen)}><Icon name="sliders" /> Filters</button><h2>{filtered.length ? "245 Properties Found" : "No Properties Found"}</h2><p>Verified homes matching your preferences</p></div><label className="sort-control"><span>Sort by</span><select defaultValue="Latest Added"><option>Price Low to High</option><option>Price High to Low</option><option>Latest Added</option></select></label></div>
+        {loading ? <div className="browse-property-grid">{Array.from({length:6}).map((_,i)=><article className="property-card skeleton-card" key={i}><div className="skeleton skeleton-image" /><div className="property-body"><div className="skeleton line wide" /><div className="skeleton line" /><div className="skeleton line short" /></div></article>)}</div>
+        : failed ? <div className="browse-state"><span className="state-icon error-icon">!</span><h2>Unable to load properties</h2><p>Something interrupted the connection. Please try again.</p><Button onClick={()=>{clear();search();}}>Retry</Button></div>
+        : filtered.length ? <div className="browse-property-grid">{filtered.map(home=>{const i=homes.indexOf(home); return <PropertyCard key={home.title} home={home} saved={saved.includes(i)} onSave={()=>toggleSaved(i)} onView={()=>viewHome(i)} />;})}</div>
+        : <EmptyState icon="home" title="No properties available." description="Try adjusting your search, or browse all verified rental properties." actionLabel="Browse Properties" onAction={clear}/>}
+        {filtered.length > 0 && !loading && !failed && <div className="browse-pagination"><Button variant="secondary">Previous</Button><span><b>1</b><button>2</button><button>3</button><small>…</small><button>12</button></span><Button variant="secondary">Next</Button></div>}
+      </main>
     </div>
-  )
+  </div>;
 }
 
-function AuthPage({
-  mode,
-  go,
-}: {
-  mode: "login" | "register"
-  go: (page: string) => void
-}) {
-  const register = mode === "register"
-  const { setAuthenticatedUser } = useAuth()
-  const [loginError, setLoginError] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [status, setStatus] =
-    useState<"idle" | "loading" | "error" | "success">("idle")
-  const emailError =
-    submitted && !email
-      ? "Required field"
-      : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-        ? "Invalid email"
-        : ""
-  const passwordError =
-    submitted && !password
-      ? "Required field"
-      : status === "error"
-        ? loginError
-        : ""
+function PropertyDetailsPage({ home, go, saved, onSave, viewHome }: { home?: typeof homes[0]; go: (page: string) => void; saved: boolean; onSave: () => void; viewHome: (i: number) => void }) {
+  const [loading, setLoading] = useState(true);
+  const [photo, setPhoto] = useState(0);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLoading(false), 450);
+    return () => window.clearTimeout(timer);
+  }, [home]);
+  if (!home) return <div className="public-page"><PublicHeader go={go} /><div className="detail-state"><span className="state-icon error-icon">!</span><h1>Property not found</h1><p>The property may have been removed or the address is incorrect.</p><Button onClick={()=>go("Discover")}>Browse Properties</Button></div></div>;
+  const gallery = [home.image, homes[(homes.indexOf(home)+1)%homes.length].image, homes[(homes.indexOf(home)+2)%homes.length].image, homes[(homes.indexOf(home)+3)%homes.length].image];
+  if (loading) return <div className="public-page"><PublicHeader go={go} /><div className="detail-loading"><div className="skeleton detail-skeleton-hero" /><div className="detail-loading-grid"><div><div className="skeleton line wide" /><div className="skeleton line" /><div className="skeleton block" /></div><div className="skeleton booking-skeleton" /></div></div></div>;
+  const unavailable = home.tag === "Unavailable";
+  return <div className="public-page detail-page"><PublicHeader go={go} /><div className="detail-shell">
+    <nav className="breadcrumb"><button onClick={()=>go("Home")}>Home</button><Icon name="chevron" size={13} /><button onClick={()=>go("Discover")}>Properties</button><Icon name="chevron" size={13} /><span>{home.title}</span></nav>
+    <section className="detail-gallery"><div className="gallery-main"><img src={gallery[photo]} alt={`${home.title} view ${photo+1}`} /><button className="gallery-arrow previous" onClick={()=>setPhoto((photo+gallery.length-1)%gallery.length)} aria-label="Previous photo"><Icon name="chevron" /></button><button className="gallery-arrow next" onClick={()=>setPhoto((photo+1)%gallery.length)} aria-label="Next photo"><Icon name="chevron" /></button><span className="photo-count">{photo+1} / {gallery.length}</span></div><div className="gallery-thumbs">{gallery.map((image,i)=><button className={photo===i?"active":""} onClick={()=>setPhoto(i)} key={image}><img src={image} alt={`Thumbnail ${i+1}`} /></button>)}</div></section>
+    <div className="detail-layout"><div className="detail-content">
+      <section className="property-heading"><div><div className="detail-badges"><Badge>{home.tag}</Badge><span className="rating"><Icon name="star" size={14} /> {home.rating} · 24 reviews</span></div><h1>{home.title}</h1><p><Icon name="pin" size={17} />{home.place}</p></div><div className="detail-price"><small>MONTHLY RENT</small><strong>{home.price}</strong><span>/ month</span></div></section>
+      <section className="detail-stats"><article><span>2</span><div><strong>Bedrooms</strong><small>Private rooms</small></div></article><article><span>2</span><div><strong>Bathrooms</strong><small>Full bathrooms</small></div></article><article><span>1,200</span><div><strong>Square feet</strong><small>Living space</small></div></article><article><span>Apartment</span><div><strong>Property type</strong><small>Entire place</small></div></article></section>
+      {unavailable && <section className="unavailable-banner"><span>!</span><div><strong>This property is no longer available</strong><p>Explore similar homes below or return to property search.</p></div><Button variant="secondary" onClick={()=>go("Discover")}>Browse alternatives</Button></section>}
+      <section className="detail-section"><h2>About this property</h2><p>Thoughtfully designed for comfortable city living, this bright apartment combines generous spaces with modern finishes. Large windows fill the rooms with natural light, while a calm neutral interior makes it easy to feel at home from day one.</p><p>The property is located close to everyday essentials, restaurants, parks, and convenient transport connections. It is ideal for professionals, couples, or a small family looking for a secure, well-managed home in Dhaka.</p></section>
+      <section className="detail-section"><h2>Amenities</h2><div className="detail-amenities">{[["search","High-speed WiFi"],["building","Reserved parking"],["settings","24/7 security"],["arrow","Lift access"],["heart","Pets allowed"]].map(a=><article key={a[1]}><span><Icon name={a[0] as IconName} /></span><strong>{a[1]}</strong></article>)}</div></section>
+      <section className="owner-card"><span className="owner-avatar">AK</span><div><small>PROPERTY OWNER</small><h3>Aisha Khan</h3><p>Member since March 2021 · Responds within an hour</p></div><Button variant="secondary"><Icon name="message" /> Contact Owner</Button></section>
+    </div>
+    <aside className="booking-card"><div className="booking-price"><span><strong>{home.price}</strong> / month</span><Badge>{unavailable?"Unavailable":"Available now"}</Badge></div><div className="booking-note"><Icon name="settings" /><p><strong>Verified property</strong><small>Reviewed by the RentNest team</small></p></div><Button onClick={()=>{}}>{unavailable?"Currently Unavailable":"Book Property"}</Button><Button variant="secondary" onClick={onSave}><Icon name="heart" />{saved?"Remove Favorite":"Add Favorite"}</Button><Button variant="secondary"><Icon name="message" /> Message Owner</Button><p className="booking-help">You won't be charged yet. Your request is sent to the owner for approval.</p></aside>
+    </div>
+    <section className="similar-section"><div className="section-title"><div><p className="eyebrow">YOU MAY ALSO LIKE</p><h2>Similar Properties</h2></div><Button variant="ghost" onClick={()=>go("Discover")}>View all <Icon name="arrow" /></Button></div><div className="property-grid">{homes.filter(x=>x!==home).slice(0,3).map(x=>{const i=homes.indexOf(x);return <PropertyCard key={x.title} home={x} saved={false} onSave={()=>{}} onView={()=>viewHome(i)} />;})}</div></section>
+  </div></div>;
+}
+
+function AuthPage({ mode, go }: { mode: "login" | "register"; go: (page: string) => void }) {
+  const register = mode === "register";
+  const { setAuthenticatedUser } = useAuth();
+  const [loginError,setLoginError] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const emailError = submitted && !email ? "Required field" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Invalid email" : "";
+  const passwordError = submitted && !password ? "Required field" : status === "error" ? loginError : "";
   const login = async () => {
-    setSubmitted(true)
-    setLoginError("")
-    if (!email || !password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return
-    setStatus("loading")
-    try {
-      const user = await authService.login({ email, password })
-      setAuthenticatedUser(user)
-      setStatus("success")
-      let target: string | null = null
-      try {
-        target = safeReturnPath(sessionStorage.getItem("rentnest:login-return"))
-        sessionStorage.removeItem("rentnest:login-return")
-      } catch {}
-      if (target) window.location.assign(target)
-      else go(dashboard(user.role))
-    } catch (error) {
-      setStatus("error")
-      setLoginError(error instanceof Error ? error.message : "Unable to login")
-    }
-  }
-  return (
-    <div className="auth-page">
-      <button className="auth-back" onClick={() => go("Home")}>
-        <Icon name="arrow" /> Back to Home
-      </button>
-      <div className="auth-form-panel">
-        <button className="brand" onClick={() => go("Home")}>
-          <span className="brand-mark">
-            <i />
-            <i />
-          </span>
-          <strong>RentNest</strong>
-        </button>
-        <div className="auth-form">
-          <p className="eyebrow">
-            {register ? "CREATE YOUR ACCOUNT" : "SECURE ACCOUNT ACCESS"}
-          </p>
-          <h1>{register ? "Find your place on RentNest." : "Welcome Back"}</h1>
-          <p>
-            {register
-              ? "Join renters and property owners building a better rental experience."
-              : "Login to continue your RentNest journey."}
-          </p>
-          {register ? (
-            <RegistrationPage go={go} />
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                login()
-              }}
-              noValidate
-            >
-              <label className={`auth-field ${emailError ? "has-error" : ""}`}>
-                <span>Email Address</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    setStatus("idle")
-                  }}
-                  placeholder="example@email.com"
-                  aria-invalid={!!emailError}
-                />
-                {emailError && <FormError message={emailError} />}{" "}
-              </label>
-              <label
-                className={`auth-field ${passwordError ? "has-error" : ""}`}
-              >
-                <span>Password</span>
-                <div className="password-control">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value)
-                      setStatus("idle")
-                    }}
-                    placeholder="Enter password"
-                    aria-invalid={!!passwordError}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    <Icon name="eye" size={18} />
-                  </button>
-                </div>
-                {passwordError && <FormError message={passwordError} />}{" "}
-              </label>
-              <div className="auth-options">
-                <label>
-                  <input type="checkbox" /> Remember me
-                </label>
-                <button type="button" onClick={() => go("Forgot password")}>
-                  Forgot Password?
-                </button>
-              </div>
-              <button
-                className={`button button-primary login-submit ${
-                  status === "loading" ? "is-loading" : ""
-                }`}
-                disabled={status === "loading" || status === "success"}
-              >
-                {status === "loading" ? (
-                  <>
-                    <i /> Logging in...
-                  </>
-                ) : status === "success" ? (
-                  <>
-                    Login successful <span>✓</span>
-                  </>
-                ) : (
-                  <>
-                    Log In <Icon name="arrow" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-          <p className="auth-switch">
-            {register ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button onClick={() => go(register ? "Login" : "Register")}>
-              {register ? "Log In" : "Create Account"}
-            </button>
-          </p>
-          {!register && (
-            <div className="admin-access">
-              <span>Administrator?</span>
-              <button className="admin-login">Admin Login</button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="auth-visual">
-        <img
-          src="https://images.unsplash.com/photo-1680416124510-5eae1beca412?auto=format&fit=crop&w=1400&q=85"
-          alt="Warm, premium modern apartment interior"
-        />
-        <div>
-          <span className="quote-mark">“</span>
-          <blockquote>
-            Find a home, connect with its owner, and manage your rental journey.
-          </blockquote>
-        </div>
-        {status === "success" && (
-          <div className="auth-success">
-            <span>✓</span>
-            <strong>Welcome back</strong>
-            <small>Taking you to your account…</small>
-          </div>
-        )}
+    setSubmitted(true); setLoginError("");
+    if (!email || !password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setStatus("loading");
+    try { const user = await authService.login({email,password}); setAuthenticatedUser(user); setStatus("success"); go(dashboard(user.role)); }
+    catch(error) { setStatus("error"); setLoginError(error instanceof Error ? error.message : "Unable to login"); }
+  };
+  return <div className="auth-page">
+    <button className="auth-back" onClick={() => go("Home")}><Icon name="arrow" /> Back to Home</button>
+    <div className="auth-form-panel"><button className="brand" onClick={() => go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button>
+      <div className="auth-form"><p className="eyebrow">{register ? "CREATE YOUR ACCOUNT" : "SECURE ACCOUNT ACCESS"}</p><h1>{register ? "Find your place on RentNest." : "Welcome Back"}</h1><p>{register ? "Join renters and property owners building a better rental experience." : "Login to continue your RentNest journey."}</p>
+        {register ? <RegistrationPage go={go}/>
+        : <form onSubmit={e=>{e.preventDefault();login();}} noValidate><label className={`auth-field ${emailError?"has-error":""}`}><span>Email Address</span><input type="email" value={email} onChange={e=>{setEmail(e.target.value);setStatus("idle");}} placeholder="example@email.com" aria-invalid={!!emailError} />{emailError&&<FormError message={emailError}/>} </label><label className={`auth-field ${passwordError?"has-error":""}`}><span>Password</span><div className="password-control"><input type={showPassword?"text":"password"} value={password} onChange={e=>{setPassword(e.target.value);setStatus("idle");}} placeholder="Enter password" aria-invalid={!!passwordError} /><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?"Hide password":"Show password"}><Icon name="eye" size={18} /></button></div>{passwordError&&<FormError message={passwordError}/>} </label><div className="auth-options"><label><input type="checkbox" /> Remember me</label><button type="button" onClick={()=>go("Forgot password")}>Forgot Password?</button></div><button className={`button button-primary login-submit ${status==="loading"?"is-loading":""}`} disabled={status==="loading"||status==="success"}>{status==="loading"?<><i /> Logging in...</>:status==="success"?<>Login successful <span>✓</span></>:<>Log In <Icon name="arrow" /></>}</button></form>}
+        <p className="auth-switch">{register ? "Already have an account?" : "Don't have an account?"} <button onClick={() => go(register ? "Login" : "Register")}>{register ? "Log In" : "Create Account"}</button></p>{!register && <div className="admin-access"><span>Administrator?</span><button className="admin-login">Admin Login</button></div>}
       </div>
     </div>
-  )
+    <div className="auth-visual"><img src="https://images.unsplash.com/photo-1680416124510-5eae1beca412?auto=format&fit=crop&w=1400&q=85" alt="Warm, premium modern apartment interior" /><div><span className="quote-mark">“</span><blockquote>RentNest helped me find a home I could trust, without the usual uncertainty.</blockquote><p>— Farah, renter in Dhaka</p></div>{status==="success"&&<div className="auth-success"><span>✓</span><strong>Welcome back</strong><small>Taking you to your account…</small></div>}</div>
+  </div>;
 }
 
 function RegistrationPage({ go }: { go: (page: string) => void }) {
-  const [role, setRole] = useState<"renter" | "owner">("renter")
-  const [fields, setFields] = useState({
-    name: "",
-    username: "",
-    email: "",
-    password: "",
-    confirm: "",
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle")
+  const [role, setRole] = useState<"renter" | "owner">("renter");
+  const [fields, setFields] = useState({ name: "", username: "", email: "", password: "", confirm: "" });
+  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
   const setField = (key: keyof typeof fields, value: string) => {
-    setFields((current) => ({ ...current, [key]: value }))
-    setStatus("idle")
-  }
+    setFields(current => ({ ...current, [key]: value }));
+    setStatus("idle");
+  };
   const errors = {
     name: submitted && !fields.name ? "Full name is required" : "",
     username: submitted && !fields.username ? "Username is required" : "",
-    email:
-      submitted && !fields.email
-        ? "Email address is required"
-        : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)
-          ? "Enter a valid email address"
-          : "",
-    password:
-      submitted && !fields.password
-        ? "Password is required"
-        : submitted && fields.password.length < 8
-          ? "Password is too weak. Use at least 8 characters"
-          : "",
-    confirm:
-      submitted && !fields.confirm
-        ? "Please confirm your password"
-        : submitted && fields.password !== fields.confirm
-          ? "Passwords don't match"
-          : "",
-  }
-  const [registrationError, setRegistrationError] = useState("")
+    email: submitted && !fields.email ? "Email address is required" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) ? "Enter a valid email address" : "",
+    password: submitted && !fields.password ? "Password is required" : submitted && fields.password.length < 8 ? "Password is too weak. Use at least 8 characters" : "",
+    confirm: submitted && !fields.confirm ? "Please confirm your password" : submitted && fields.password !== fields.confirm ? "Passwords don't match" : "",
+  };
+  const [registrationError,setRegistrationError] = useState("");
   const createAccount = async () => {
-    setSubmitted(true)
-    if (
-      !fields.name ||
-      !fields.username ||
-      !fields.email ||
-      !fields.password ||
-      !fields.confirm ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) ||
-      fields.password.length < 8 ||
-      fields.password !== fields.confirm
-    )
-      return
-    setStatus("loading")
-    setRegistrationError("")
-    try {
-      await authService.register({
-        name: fields.name,
-        username: fields.username,
-        email: fields.email,
-        password: fields.password,
-        confirmPassword: fields.confirm,
-        role,
-      })
-      setStatus("success")
-    } catch (error) {
-      setStatus("idle")
-      setRegistrationError(
-        error instanceof Error ? error.message : "Unable to create account",
-      )
-    }
-  }
-  if (status === "success")
-    return (
-      <div className="registration-page">
-        <button className="auth-back" onClick={() => go("Home")}>
-          <Icon name="arrow" /> Back to Home
-        </button>
-        <section className="registration-success">
-          <span>✓</span>
-          <p className="eyebrow">WELCOME TO RENTNEST</p>
-          <h1>Account created successfully</h1>
-          <p>
-            Your {role === "renter" ? "renter" : "property owner"} account is
-            ready. Let's take you to the right place.
-          </p>
-          <div className={`success-role role-${role}`}>
-            <Icon name={role === "renter" ? "search" : "building"} />
-            <div>
-              <small>YOUR ACCOUNT TYPE</small>
-              <strong>{role === "renter" ? "Renter" : "Property Owner"}</strong>
-            </div>
-          </div>
-          <Button onClick={() => go("Login")}>
-            Log in to your account <Icon name="arrow" />
-          </Button>
-        </section>
-      </div>
-    )
-  return (
-    <div className="registration-page">
-      <button className="auth-back" onClick={() => go("Home")}>
-        <Icon name="arrow" /> Back to Home
-      </button>
-      <div className="registration-glow glow-one" />
-      <div className="registration-glow glow-two" />
-      <section className="registration-card">
-        <button className="brand registration-brand" onClick={() => go("Home")}>
-          <span className="brand-mark">
-            <i />
-            <i />
-          </span>
-          <strong>RentNest</strong>
-        </button>
-        <div className="registration-heading">
-          <p className="eyebrow">CREATE YOUR ACCOUNT</p>
-          <h1>Start your RentNest journey</h1>
-          <p>
-            Choose how you'd like to use RentNest, then tell us a little about
-            yourself.
-          </p>
-        </div>
-        <div className="registration-roles">
-          <button
-            className={role === "renter" ? "selected" : ""}
-            onClick={() => setRole("renter")}
-          >
-            <span>
-              <Icon name="search" />
-            </span>
-            <div>
-              <small>RENTER</small>
-              <strong>I want to find a home</strong>
-              <p>Search properties and request bookings.</p>
-            </div>
-            <i />
-          </button>
-          <button
-            className={role === "owner" ? "selected" : ""}
-            onClick={() => setRole("owner")}
-          >
-            <span>
-              <Icon name="building" />
-            </span>
-            <div>
-              <small>PROPERTY OWNER</small>
-              <strong>I want to rent out my property</strong>
-              <p>Create listings and manage rentals.</p>
-            </div>
-            <i />
-          </button>
-        </div>
-        {registrationError && <FormError message={registrationError} />}
-        <form
-          className="registration-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            createAccount()
-          }}
-          noValidate
-        >
-          <label className={`auth-field ${errors.name ? "has-error" : ""}`}>
-            <span>Full Name</span>
-            <input
-              value={fields.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="Enter your full name"
-            />
-            {errors.name && <small>{errors.name}</small>}
-          </label>
-          <label className={`auth-field ${errors.username ? "has-error" : ""}`}>
-            <span>Username</span>
-            <input
-              value={fields.username}
-              onChange={(e) => setField("username", e.target.value)}
-              placeholder="Choose a username"
-            />
-            {errors.username && <small>{errors.username}</small>}
-          </label>
-          <label
-            className={`auth-field wide ${errors.email ? "has-error" : ""}`}
-          >
-            <span>Email Address</span>
-            <input
-              type="email"
-              value={fields.email}
-              onChange={(e) => setField("email", e.target.value)}
-              placeholder="example@email.com"
-            />
-            {errors.email && <small>{errors.email}</small>}
-          </label>
-          <label className={`auth-field ${errors.password ? "has-error" : ""}`}>
-            <span>Password</span>
-            <input
-              type="password"
-              value={fields.password}
-              onChange={(e) => setField("password", e.target.value)}
-              placeholder="At least 8 characters"
-            />
-            {errors.password && <small>{errors.password}</small>}
-          </label>
-          <label className={`auth-field ${errors.confirm ? "has-error" : ""}`}>
-            <span>Confirm Password</span>
-            <input
-              type="password"
-              value={fields.confirm}
-              onChange={(e) => setField("confirm", e.target.value)}
-              placeholder="Repeat your password"
-            />
-            {errors.confirm && <small>{errors.confirm}</small>}
-          </label>
-          <button
-            className={`button button-primary registration-submit ${
-              status === "loading" ? "is-loading" : ""
-            }`}
-            disabled={status === "loading"}
-          >
-            {status === "loading" ? (
-              <>
-                <i /> Creating account...
-              </>
-            ) : (
-              <>
-                Create Account <Icon name="arrow" />
-              </>
-            )}
-          </button>
-        </form>
-        <p className="registration-login">
-          Already have an account?{" "}
-          <button onClick={() => go("Login")}>Login</button>
-        </p>
-      </section>
-    </div>
-  )
+    setSubmitted(true);
+    if (!fields.name || !fields.username || !fields.email || !fields.password || !fields.confirm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email) || fields.password.length < 8 || fields.password !== fields.confirm) return;
+    setStatus("loading");
+    setRegistrationError("");
+    try { await authService.register({name:fields.name, username:fields.username, email:fields.email, password:fields.password, confirmPassword:fields.confirm, role}); setStatus("success"); } catch(error) { setStatus("idle"); setRegistrationError(error instanceof Error ? error.message : "Unable to create account"); }
+  };
+  if (status === "success") return <div className="registration-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><section className="registration-success"><span>✓</span><p className="eyebrow">WELCOME TO RENTNEST</p><h1>Account created successfully</h1><p>Your {role === "renter" ? "renter" : "property owner"} account is ready. Let's take you to the right place.</p><div className={`success-role role-${role}`}><Icon name={role === "renter" ? "search" : "building"} /><div><small>YOUR ACCOUNT TYPE</small><strong>{role === "renter" ? "Renter" : "Property Owner"}</strong></div></div><Button onClick={()=>go("Login")}>Log in to your account <Icon name="arrow" /></Button></section></div>;
+  return <div className="registration-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><div className="registration-glow glow-one" /><div className="registration-glow glow-two" />
+    <section className="registration-card"><button className="brand registration-brand" onClick={()=>go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button><div className="registration-heading"><p className="eyebrow">CREATE YOUR ACCOUNT</p><h1>Start your RentNest journey</h1><p>Choose how you'd like to use RentNest, then tell us a little about yourself.</p></div>
+      <div className="registration-roles"><button className={role==="renter"?"selected":""} onClick={()=>setRole("renter")}><span><Icon name="search" /></span><div><small>RENTER</small><strong>I want to find a home</strong><p>Search properties and request bookings.</p></div><i /></button><button className={role==="owner"?"selected":""} onClick={()=>setRole("owner")}><span><Icon name="building" /></span><div><small>PROPERTY OWNER</small><strong>I want to rent out my property</strong><p>Create listings and manage rentals.</p></div><i /></button></div>
+      {registrationError&&<FormError message={registrationError}/>}<form className="registration-form" onSubmit={e=>{e.preventDefault();createAccount();}} noValidate>
+        <label className={`auth-field ${errors.name?"has-error":""}`}><span>Full Name</span><input value={fields.name} onChange={e=>setField("name",e.target.value)} placeholder="Enter your full name" />{errors.name&&<small>{errors.name}</small>}</label>
+        <label className={`auth-field ${errors.username?"has-error":""}`}><span>Username</span><input value={fields.username} onChange={e=>setField("username",e.target.value)} placeholder="Choose a username" />{errors.username&&<small>{errors.username}</small>}</label>
+        <label className={`auth-field wide ${errors.email?"has-error":""}`}><span>Email Address</span><input type="email" value={fields.email} onChange={e=>setField("email",e.target.value)} placeholder="example@email.com" />{errors.email&&<small>{errors.email}</small>}</label>
+        <label className={`auth-field ${errors.password?"has-error":""}`}><span>Password</span><input type="password" value={fields.password} onChange={e=>setField("password",e.target.value)} placeholder="At least 8 characters" />{errors.password&&<small>{errors.password}</small>}</label>
+        <label className={`auth-field ${errors.confirm?"has-error":""}`}><span>Confirm Password</span><input type="password" value={fields.confirm} onChange={e=>setField("confirm",e.target.value)} placeholder="Repeat your password" />{errors.confirm&&<small>{errors.confirm}</small>}</label>
+        <button className={`button button-primary registration-submit ${status==="loading"?"is-loading":""}`} disabled={status==="loading"}>{status==="loading"?<><i /> Creating account...</>:<>Create Account <Icon name="arrow" /></>}</button>
+      </form>
+      <p className="registration-login">Already have an account? <button onClick={()=>go("Login")}>Login</button></p>
+    </section>
+  </div>;
 }
 
 function ForgotPasswordPage({ go }: { go: (page: string) => void }) {
-  const token = new URLSearchParams(location.search).get("token") || ""
-  const [email, setEmail] = useState(""),
-    [password, setPassword] = useState(""),
-    [confirm, setConfirm] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false)
-  const submit = async () => {
-    setBusy(true)
-    setError("")
-    try {
-      if (token)
-        await authService.resetPassword({
-          token,
-          newPassword: password,
-          confirmNewPassword: confirm,
-        })
-      else await authService.forgotPassword({ email })
-      setSaved(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to process request")
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <div className="recovery-page">
-      <section className="recovery-card">
-        <h1>{token ? "Reset password" : "Forgot password?"}</h1>
-        {error && <p role="alert">{error}</p>}
-        {saved ? (
-          <>
-            <p>
-              {token
-                ? "Password updated."
-                : "If an eligible account exists, the backend generated a reset token. Email delivery is not configured in this development environment."}
-            </p>
-            <Button onClick={() => go("Login")}>Return to login</Button>
-          </>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void submit()
-            }}
-          >
-            {token ? (
-              <>
-                <label className="auth-field">
-                  <span>New password</span>
-                  <input
-                    required
-                    minLength={8}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </label>
-                <label className="auth-field">
-                  <span>Confirm password</span>
-                  <input
-                    required
-                    type="password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                  />
-                </label>
-              </>
-            ) : (
-              <label className="auth-field">
-                <span>Email address</span>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-            )}
-            <button className="button button-primary" disabled={busy}>
-              {busy
-                ? "Processing…"
-                : token
-                  ? "Update password"
-                  : "Request reset"}
-            </button>
-          </form>
-        )}
-      </section>
-    </div>
-  )
+  const [step, setStep] = useState<"request" | "sent" | "reset" | "expired" | "success">("request");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const emailError = submitted && !email ? "Email address is required" : submitted && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address" : "";
+  const passwordError = submitted && !password ? "New password is required" : submitted && password.length < 8 ? "Use at least 8 characters" : "";
+  const confirmError = submitted && !confirm ? "Please confirm your new password" : submitted && password !== confirm ? "Passwords don't match" : "";
+  const sendLink = () => {
+    setSubmitted(true);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setLoading(true);
+    window.setTimeout(() => { setLoading(false); setStep("sent"); setSubmitted(false); }, 850);
+  };
+  const updatePassword = () => {
+    setSubmitted(true);
+    if (!password || password.length < 8 || !confirm || password !== confirm) return;
+    setLoading(true);
+    window.setTimeout(() => { setLoading(false); setStep("success"); }, 850);
+  };
+  const content = step === "request" ? <><div className="recovery-icon"><Icon name="mail" size={25} /></div><p className="eyebrow">ACCOUNT RECOVERY</p><h1>Forgot Password?</h1><p>Enter your email address and we will send you a reset link.</p><form onSubmit={e=>{e.preventDefault();sendLink();}} noValidate><label className={`auth-field ${emailError?"has-error":""}`}><span>Email Address</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@email.com" />{emailError&&<small>{emailError}</small>}</label><button className={`button button-primary recovery-submit ${loading?"is-loading":""}`} disabled={loading}>{loading?<><i /> Sending reset link...</>:<>Send Reset Link <Icon name="arrow" /></>}</button></form><button className="recovery-link" onClick={()=>go("Login")}><Icon name="arrow" size={14} /> Back to Login</button></>
+    : step === "sent" ? <><div className="recovery-icon success"><Icon name="mail" size={26} /></div><p className="eyebrow">CHECK YOUR EMAIL</p><h1>Password reset link has been sent.</h1><p>Please check your inbox. We sent instructions to <strong>{email}</strong>.</p><div className="recovery-tip"><span>i</span><p>The link will expire after 30 minutes for your security.</p></div><Button onClick={()=>go("Login")}>Return to Login</Button><button className="recovery-link" onClick={()=>{setStep("reset");setSubmitted(false);}}>Open demo reset link <Icon name="arrow" size={14} /></button></>
+    : step === "reset" ? <><div className="recovery-icon"><Icon name="settings" size={25} /></div><p className="eyebrow">CREATE NEW PASSWORD</p><h1>Reset your password</h1><p>Choose a strong password you haven't used before.</p><form onSubmit={e=>{e.preventDefault();updatePassword();}} noValidate><label className={`auth-field ${passwordError?"has-error":""}`}><span>New Password</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" />{passwordError&&<small>{passwordError}</small>}</label><label className={`auth-field ${confirmError?"has-error":""}`}><span>Confirm Password</span><input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repeat your new password" />{confirmError&&<small>{confirmError}</small>}</label><button className={`button button-primary recovery-submit ${loading?"is-loading":""}`} disabled={loading}>{loading?<><i /> Updating password...</>:<>Update Password <Icon name="arrow" /></>}</button></form><button className="recovery-link" onClick={()=>setStep("expired")}>My reset link has expired</button></>
+    : step === "expired" ? <><div className="recovery-icon danger">!</div><p className="eyebrow">LINK EXPIRED</p><h1>This reset link has expired</h1><p>For your security, password reset links are only valid for 30 minutes. Request a new one to continue.</p><Button onClick={()=>{setStep("request");setSubmitted(false);}}>Request New Link</Button><button className="recovery-link" onClick={()=>go("Login")}><Icon name="arrow" size={14} /> Back to Login</button></>
+    : <><div className="recovery-icon success">✓</div><p className="eyebrow">PASSWORD UPDATED</p><h1>Password changed successfully</h1><p>You can now sign in to RentNest using your new password.</p><Button onClick={()=>go("Login")}>Continue to Login <Icon name="arrow" /></Button></>;
+  return <div className="recovery-page"><button className="auth-back" onClick={()=>go("Home")}><Icon name="arrow" /> Back to Home</button><div className="recovery-decoration decoration-one" /><div className="recovery-decoration decoration-two" /><section className="recovery-card"><button className="brand recovery-brand" onClick={()=>go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button><div className="recovery-content">{content}</div><div className="recovery-security"><Icon name="settings" size={14} /> Secure account recovery</div></section></div>;
 }
 
 function AccessDeniedPage({ go }: { go: (page: string) => void }) {
-  const { user } = useAuth()
-  return (
-    <ErrorState
-      type="permission"
-      fullPage
-      title="Access denied"
-      description="Your current account role cannot open this workspace. Contact RentNest support if you believe this is a mistake."
-      primaryLabel="Return Dashboard"
-      onPrimary={() => go(user ? dashboard(user.role) : "Home")}
-    />
-  )
+  return <ErrorState type="permission" fullPage title="You don't have permission to access this page." description="Your current account role cannot open this workspace. Contact RentNest support if you believe this is a mistake." primaryLabel="Return Dashboard" onPrimary={()=>go("Renter dashboard")}/>;
 }
 
 function SessionExpiredPage({ go }: { go: (page: string) => void }) {
-  return (
-    <div className="session-expired-page">
-      <header>
-        <button className="brand" onClick={() => go("Home")}>
-          <span className="brand-mark">
-            <i />
-            <i />
-          </span>
-          <strong>RentNest</strong>
-        </button>
-      </header>
-      <section className="session-expired-card">
-        <div className="session-expired-icon">
-          <Icon name="lock" size={30} />
-          <span>!</span>
-        </div>
-        <p className="eyebrow">ACCOUNT SECURITY</p>
-        <h1>Session Expired</h1>
-        <p>Please login again to continue.</p>
-        <div className="expired-message">
-          <Icon name="settings" size={16} />
-          <span>
-            Your session ended to help keep your RentNest account secure.
-          </span>
-        </div>
-        <Button onClick={() => go("Login")}>
-          Login Again <Icon name="arrow" />
-        </Button>
-        <button className="session-home" onClick={() => go("Home")}>
-          Return to homepage
-        </button>
-      </section>
-    </div>
-  )
+  return <div className="session-expired-page"><header><button className="brand" onClick={()=>go("Home")}><span className="brand-mark"><i /><i /></span><strong>RentNest</strong></button></header><section className="session-expired-card"><div className="session-expired-icon"><Icon name="lock" size={30} /><span>!</span></div><p className="eyebrow">ACCOUNT SECURITY</p><h1>Session Expired</h1><p>Please login again to continue.</p><div className="expired-message"><Icon name="settings" size={16} /><span>Your session ended to help keep your RentNest account secure.</span></div><Button onClick={()=>go("Login")}>Login Again <Icon name="arrow" /></Button><button className="session-home" onClick={()=>go("Home")}>Return to homepage</button></section></div>;
 }
 
-function RoleRedirectPage({
-  role,
-  go,
-}: {
-  role: "Renter" | "Owner" | "Admin"
-  go: (page: string) => void
-}) {
-  const [phase, setPhase] = useState(0)
+function RoleRedirectPage({ role, go }: { role: "Renter" | "Owner" | "Admin"; go: (page: string) => void }) {
+  const [phase, setPhase] = useState(0);
   useEffect(() => {
-    const progress = window.setInterval(
-      () => setPhase((current) => Math.min(current + 1, 2)),
-      480,
-    )
-    const destination =
-      role === "Renter"
-        ? "Renter dashboard"
-        : role === "Owner"
-          ? "Owner workspace"
-          : "Admin overview"
-    const redirect = window.setTimeout(() => go(destination), 1650)
-    return () => {
-      window.clearInterval(progress)
-      window.clearTimeout(redirect)
-    }
-  }, [role, go])
-  return (
-    <div className="redirect-page">
-      <div className="redirect-halo halo-one" />
-      <div className="redirect-halo halo-two" />
-      <section className="redirect-content">
-        <div className="redirect-logo">
-          <span className="brand-mark">
-            <i />
-            <i />
-          </span>
-          <strong>RentNest</strong>
-          <span className="redirect-pulse" />
-        </div>
-        <div className="redirect-loader">
-          <span />
-          <span />
-          <span />
-        </div>
-        <p className="eyebrow">WELCOME BACK · {role.toUpperCase()}</p>
-        <h1>Preparing your dashboard...</h1>
-        <p>Securely connecting your account</p>
-        <div className="redirect-progress">
-          <div className={phase >= 0 ? "complete" : ""}>
-            <span>{phase > 0 ? "✓" : "1"}</span>
-            <p>
-              <strong>Account validated</strong>
-              <small>Your credentials are secure</small>
-            </p>
-          </div>
-          <i />
-          <div className={phase >= 1 ? "complete" : ""}>
-            <span>{phase > 1 ? "✓" : "2"}</span>
-            <p>
-              <strong>Role confirmed</strong>
-              <small>{role} access applied</small>
-            </p>
-          </div>
-          <i />
-          <div className={phase >= 2 ? "complete" : ""}>
-            <span>3</span>
-            <p>
-              <strong>Dashboard ready</strong>
-              <small>Taking you there now</small>
-            </p>
-          </div>
-        </div>
-        <div className="redirect-security">
-          <Icon name="lock" size={14} /> Encrypted and secure
-        </div>
-      </section>
-    </div>
-  )
+    const progress = window.setInterval(() => setPhase(current => Math.min(current + 1, 2)), 480);
+    const destination = role === "Renter" ? "Renter dashboard" : role === "Owner" ? "Owner workspace" : "Admin overview";
+    const redirect = window.setTimeout(() => go(destination), 1650);
+    return () => { window.clearInterval(progress); window.clearTimeout(redirect); };
+  }, [role, go]);
+  return <div className="redirect-page"><div className="redirect-halo halo-one" /><div className="redirect-halo halo-two" /><section className="redirect-content"><div className="redirect-logo"><span className="brand-mark"><i /><i /></span><strong>RentNest</strong><span className="redirect-pulse" /></div><div className="redirect-loader"><span /><span /><span /></div><p className="eyebrow">WELCOME BACK · {role.toUpperCase()}</p><h1>Preparing your dashboard...</h1><p>Securely connecting your account</p><div className="redirect-progress"><div className={phase>=0?"complete":""}><span>{phase>0?"✓":"1"}</span><p><strong>Account validated</strong><small>Your credentials are secure</small></p></div><i /><div className={phase>=1?"complete":""}><span>{phase>1?"✓":"2"}</span><p><strong>Role confirmed</strong><small>{role} access applied</small></p></div><i /><div className={phase>=2?"complete":""}><span>3</span><p><strong>Dashboard ready</strong><small>Taking you there now</small></p></div></div><div className="redirect-security"><Icon name="lock" size={14} /> Encrypted and secure</div></section></div>;
 }
 
 function DesignSystem() {
   const sidebarSets = [
-    [
-      "Renter",
-      "Discover Properties",
-      "Favorites",
-      "My Bookings",
-      "Messages",
-      "Notifications",
-      "Profile",
-    ],
-    [
-      "Owner",
-      "Dashboard",
-      "My Listings",
-      "Booking Requests",
-      "Messages",
-      "Payments",
-      "Profile",
-    ],
-    [
-      "Admin",
-      "Dashboard",
-      "User Management",
-      "Listing Management",
-      "Booking Management",
-      "Payments & Reports",
-      "Analytics",
-    ],
-  ]
-  return (
-    <div className="ds-page">
-      <Header
-        eyebrow="01 · DESIGN SYSTEM"
-        title="RentNest Foundations"
-        action={<Badge>v1.0 · Production</Badge>}
-      />
-      <p className="ds-intro">
-        A shared visual language for property discovery, owner operations, and
-        platform administration. Built to map cleanly to reusable React
-        components.
-      </p>
+    ["Renter", "Discover Properties", "Favorites", "My Bookings", "Messages", "Notifications", "Profile"],
+    ["Owner", "Dashboard", "My Listings", "Booking Requests", "Messages", "Payments", "Profile"],
+    ["Admin", "Dashboard", "User Management", "Listing Management", "Booking Management", "Payments & Reports", "Analytics"],
+  ];
+  return <div className="ds-page">
+    <Header eyebrow="01 · DESIGN SYSTEM" title="RentNest Foundations" action={<Badge>v1.0 · Production</Badge>} />
+    <p className="ds-intro">A shared visual language for property discovery, owner operations, and platform administration. Built to map cleanly to reusable React components.</p>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>01</span>
-          <div>
-            <h2>Brand color</h2>
-            <p>One recognizable maroon system, balanced by warm neutrals.</p>
-          </div>
-        </div>
-        <div className="swatch-grid">
-          {[
-            ["Deep Maroon", "#591734", "swatch-brand"],
-            ["Dark Wine", "#660033", "swatch-wine"],
-            ["Light Lilac", "#E6D5E9", "swatch-lilac"],
-            ["Background", "#FAF8F9", "swatch-bg"],
-            ["Surface", "#FFFFFF", "swatch-surface"],
-            ["Charcoal", "#1F1F1F", "swatch-ink"],
-            ["Secondary", "#6B7280", "swatch-muted"],
-            ["Border", "#E5E7EB", "swatch-line"],
-          ].map((s) => (
-            <article className="swatch" key={s[0]}>
-              <div className={s[2]} />
-              <strong>{s[0]}</strong>
-              <small>{s[1]}</small>
-            </article>
-          ))}
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>01</span><div><h2>Brand color</h2><p>One recognizable maroon system, balanced by warm neutrals.</p></div></div>
+      <div className="swatch-grid">{[
+        ["Deep Maroon", "#591734", "swatch-brand"], ["Dark Wine", "#660033", "swatch-wine"], ["Light Lilac", "#E6D5E9", "swatch-lilac"],
+        ["Background", "#FAF8F9", "swatch-bg"], ["Surface", "#FFFFFF", "swatch-surface"], ["Charcoal", "#1F1F1F", "swatch-ink"], ["Secondary", "#6B7280", "swatch-muted"], ["Border", "#E5E7EB", "swatch-line"],
+      ].map(s => <article className="swatch" key={s[0]}><div className={s[2]} /><strong>{s[0]}</strong><small>{s[1]}</small></article>)}</div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>02</span>
-          <div>
-            <h2>Typography</h2>
-            <p>
-              Manrope provides clarity at marketplace and dashboard densities.
-            </p>
-          </div>
-        </div>
-        <div className="type-specimen">
-          <div>
-            <small>DISPLAY · 48 / BOLD</small>
-            <p className="type-display">Find a place to belong.</p>
-          </div>
-          <div>
-            <small>H1 · 36 / BOLD</small>
-            <p className="type-h1">Your property portfolio</p>
-          </div>
-          <div>
-            <small>H2 · 28 / BOLD</small>
-            <p className="type-h2">Booking requests</p>
-          </div>
-          <div>
-            <small>H3 · 20 / SEMIBOLD</small>
-            <p className="type-h3">Sunlit apartment</p>
-          </div>
-          <div>
-            <small>BODY · 16 / REGULAR</small>
-            <p className="type-body">
-              Thoughtful spaces, trusted owners, and simple bookings.
-            </p>
-          </div>
-          <div>
-            <small>CAPTION · 14 / REGULAR</small>
-            <p className="type-caption">Gulshan, Dhaka · Apartment</p>
-          </div>
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>02</span><div><h2>Typography</h2><p>Manrope provides clarity at marketplace and dashboard densities.</p></div></div>
+      <div className="type-specimen"><div><small>DISPLAY · 48 / BOLD</small><p className="type-display">Find a place to belong.</p></div><div><small>H1 · 36 / BOLD</small><p className="type-h1">Your property portfolio</p></div><div><small>H2 · 28 / BOLD</small><p className="type-h2">Booking requests</p></div><div><small>H3 · 20 / SEMIBOLD</small><p className="type-h3">Sunlit apartment</p></div><div><small>BODY · 16 / REGULAR</small><p className="type-body">Thoughtful spaces, trusted owners, and simple bookings.</p></div><div><small>CAPTION · 14 / REGULAR</small><p className="type-caption">Gulshan, Dhaka · Apartment</p></div></div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>03</span>
-          <div>
-            <h2>Buttons & status</h2>
-            <p>Actions and states remain predictable across every role.</p>
-          </div>
-        </div>
-        <div className="ds-component-grid">
-          <div className="component-board">
-            <p className="component-label">BUTTON VARIANTS</p>
-            <div className="button-showcase">
-              <Button>Book property</Button>
-              <Button variant="secondary">View details</Button>
-              <Button variant="ghost">Cancel</Button>
-              <Button variant="destructive">Delete listing</Button>
-              <button className="button button-primary" disabled>
-                Disabled
-              </button>
-              <button className="button button-primary loading-button">
-                <i /> Saving
-              </button>
-            </div>
-          </div>
-          <div className="component-board">
-            <p className="component-label">STATUS BADGES</p>
-            <div className="badge-showcase">
-              <Badge tone="warning">Pending</Badge>
-              <Badge>Approved</Badge>
-              <Badge>Confirmed</Badge>
-              <Badge tone="danger">Rejected</Badge>
-              <Badge tone="neutral">Cancelled</Badge>
-              <span className="badge draft">Draft</span>
-            </div>
-          </div>
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>03</span><div><h2>Buttons & status</h2><p>Actions and states remain predictable across every role.</p></div></div>
+      <div className="ds-component-grid"><div className="component-board"><p className="component-label">BUTTON VARIANTS</p><div className="button-showcase"><Button>Book property</Button><Button variant="secondary">View details</Button><Button variant="ghost">Cancel</Button><Button variant="destructive">Delete listing</Button><button className="button button-primary" disabled>Disabled</button><button className="button button-primary loading-button"><i /> Saving</button></div></div>
+      <div className="component-board"><p className="component-label">STATUS BADGES</p><div className="badge-showcase"><Badge tone="warning">Pending</Badge><Badge>Approved</Badge><Badge>Confirmed</Badge><Badge tone="danger">Rejected</Badge><Badge tone="neutral">Cancelled</Badge><span className="badge draft">Draft</span></div></div></div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>04</span>
-          <div>
-            <h2>Form system</h2>
-            <p>
-              Clear labels and visible interaction states reduce input errors.
-            </p>
-          </div>
-        </div>
-        <div className="form-showcase">
-          <label className="ds-field">
-            <span>Default input</span>
-            <input placeholder="Property title" />
-          </label>
-          <label className="ds-field focus">
-            <span>Focused input</span>
-            <input defaultValue="Sunlit apartment" />
-          </label>
-          <label className="ds-field error">
-            <span>Email address</span>
-            <input defaultValue="incorrect-email" />
-            <small>Enter a valid email address.</small>
-          </label>
-          <label className="ds-field success">
-            <span>Location</span>
-            <input defaultValue="Gulshan, Dhaka" />
-            <small>Location verified.</small>
-          </label>
-          <label className="ds-field">
-            <span>Property type</span>
-            <select defaultValue="Apartment">
-              <option>Apartment</option>
-              <option>Flat</option>
-              <option>Room</option>
-            </select>
-          </label>
-          <label className="ds-field disabled">
-            <span>Account ID</span>
-            <input disabled defaultValue="RN-2048" />
-          </label>
-        </div>
-        <div className="choice-row">
-          <label>
-            <input type="checkbox" defaultChecked /> Furnished
-          </label>
-          <label>
-            <input type="checkbox" /> Pets allowed
-          </label>
-          <label>
-            <input type="radio" name="role-demo" defaultChecked /> Renter
-          </label>
-          <label>
-            <input type="radio" name="role-demo" /> Owner
-          </label>
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>04</span><div><h2>Form system</h2><p>Clear labels and visible interaction states reduce input errors.</p></div></div>
+      <div className="form-showcase"><label className="ds-field"><span>Default input</span><input placeholder="Property title" /></label><label className="ds-field focus"><span>Focused input</span><input defaultValue="Sunlit apartment" /></label><label className="ds-field error"><span>Email address</span><input defaultValue="incorrect-email" /><small>Enter a valid email address.</small></label><label className="ds-field success"><span>Location</span><input defaultValue="Gulshan, Dhaka" /><small>Location verified.</small></label><label className="ds-field"><span>Property type</span><select defaultValue="Apartment"><option>Apartment</option><option>Flat</option><option>Room</option></select></label><label className="ds-field disabled"><span>Account ID</span><input disabled defaultValue="RN-2048" /></label></div>
+      <div className="choice-row"><label><input type="checkbox" defaultChecked /> Furnished</label><label><input type="checkbox" /> Pets allowed</label><label><input type="radio" name="role-demo" defaultChecked /> Renter</label><label><input type="radio" name="role-demo" /> Owner</label></div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>05</span>
-          <div>
-            <h2>Property cards</h2>
-            <p>
-              A responsive marketplace primitive with consistent information
-              hierarchy.
-            </p>
-          </div>
-        </div>
-        <ListingCollection onView={() => {}} onLogin={() => {}} />
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>05</span><div><h2>Property cards</h2><p>A responsive marketplace primitive with consistent information hierarchy.</p></div></div>
+      <div className="property-grid ds-properties"><PropertyCard home={homes[0]} saved={false} onSave={() => {}} /><PropertyCard home={homes[1]} saved onSave={() => {}} /><article className="property-card unavailable-card"><div className="property-image"><img src={homes[2].image} alt="" /><Badge tone="neutral">Unavailable</Badge></div><div className="property-body"><h3>{homes[2].title}</h3><p className="location">{homes[2].place}</p><Button variant="secondary">View details</Button></div></article><article className="property-card skeleton-card"><div className="skeleton skeleton-image" /><div className="property-body"><div className="skeleton line wide" /><div className="skeleton line" /><div className="skeleton line short" /></div></article></div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>06</span>
-          <div>
-            <h2>Role navigation</h2>
-            <p>
-              Purpose-built menus make each workspace immediately recognizable.
-            </p>
-          </div>
-        </div>
-        <div className="sidebar-showcase">
-          {sidebarSets.map((set, index) => (
-            <article
-              className={`mini-sidebar mini-${set[0].toLowerCase()}`}
-              key={set[0]}
-            >
-              <div className="mini-sidebar-head">
-                <span className="brand-mark">
-                  <i />
-                  <i />
-                </span>
-                <strong>{set[0]}</strong>
-                <small className={`role-badge ${set[0].toLowerCase()}`}>
-                  {set[0]}
-                </small>
-              </div>
-              {set.slice(1).map((item, i) => (
-                <div className={i === 0 ? "selected" : ""} key={item}>
-                  <Icon
-                    name={
-                      [
-                        "home",
-                        "heart",
-                        "calendar",
-                        "message",
-                        "bell",
-                        "settings",
-                      ][i % 6] as IconName
-                    }
-                  />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </article>
-          ))}
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>06</span><div><h2>Role navigation</h2><p>Purpose-built menus make each workspace immediately recognizable.</p></div></div>
+      <div className="sidebar-showcase">{sidebarSets.map((set, index) => <article className={`mini-sidebar mini-${set[0].toLowerCase()}`} key={set[0]}><div className="mini-sidebar-head"><span className="brand-mark"><i /><i /></span><strong>{set[0]}</strong><small className={`role-badge ${set[0].toLowerCase()}`}>{set[0]}</small></div>{set.slice(1).map((item, i) => <div className={i === 0 ? "selected" : ""} key={item}><Icon name={["home","heart","calendar","message","bell","settings"][i % 6] as IconName} /><span>{item}</span></div>)}</article>)}</div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>07</span>
-          <div>
-            <h2>Global states</h2>
-            <p>
-              Every workflow accounts for delay, absence, failure, and
-              restricted access.
-            </p>
-          </div>
-        </div>
-        <div className="state-grid">
-          <article>
-            <span className="state-icon">
-              <Icon name="search" />
-            </span>
-            <h3>No properties found</h3>
-            <p>Try adjusting your filters or search another area.</p>
-            <Button variant="secondary">Reset filters</Button>
-          </article>
-          <article>
-            <span className="state-icon error-icon">!</span>
-            <h3>Something went wrong</h3>
-            <p>We couldn't load this information right now.</p>
-            <Button variant="secondary">Try again</Button>
-          </article>
-          <article>
-            <span className="state-icon denied-icon">
-              <Icon name="settings" />
-            </span>
-            <h3>Access denied</h3>
-            <p>You do not have permission to access this page.</p>
-            <Button>Return to dashboard</Button>
-          </article>
-          <article className="loading-state">
-            <div className="skeleton state-skeleton" />
-            <div>
-              <div className="skeleton line wide" />
-              <div className="skeleton line" />
-            </div>
-          </article>
-        </div>
-      </section>
+    <section className="ds-section"><div className="ds-section-head"><span>07</span><div><h2>Global states</h2><p>Every workflow accounts for delay, absence, failure, and restricted access.</p></div></div>
+      <div className="state-grid"><article><span className="state-icon"><Icon name="search" /></span><h3>No properties found</h3><p>Try adjusting your filters or search another area.</p><Button variant="secondary">Reset filters</Button></article><article><span className="state-icon error-icon">!</span><h3>Something went wrong</h3><p>We couldn't load this information right now.</p><Button variant="secondary">Try again</Button></article><article><span className="state-icon denied-icon"><Icon name="settings" /></span><h3>Access denied</h3><p>You do not have permission to access this page.</p><Button>Return to dashboard</Button></article><article className="loading-state"><div className="skeleton state-skeleton" /><div><div className="skeleton line wide" /><div className="skeleton line" /></div></article></div>
+    </section>
 
-      <section className="ds-section">
-        <div className="ds-section-head">
-          <span>08</span>
-          <div>
-            <h2>Data table</h2>
-            <p>
-              Dense, scannable management interfaces for owners and
-              administrators.
-            </p>
-          </div>
-        </div>
-        <TableSkeleton rows={2} />
-        <p>Component loading-state example; no application records.</p>
-      </section>
-    </div>
-  )
+    <section className="ds-section"><div className="ds-section-head"><span>08</span><div><h2>Data table</h2><p>Dense, scannable management interfaces for owners and administrators.</p></div></div>
+      <div className="ds-table-toolbar"><div className="global-search"><Icon name="search" /><input placeholder="Search listings..." /></div><Button variant="secondary"><Icon name="sliders" /> Filters</Button><Button><Icon name="plus" /> Add listing</Button></div><div className="table-card"><div className="table-head ds-table"><span><input type="checkbox" /></span><span>Property</span><span>Status</span><span>Monthly rent</span><span>Updated</span><span /></div>{homes.slice(0,2).map((home,i)=><div className="table-row ds-table" key={home.title}><span><input type="checkbox" /></span><div className="table-property"><img src={home.image} alt="" /><span><strong>{home.title}</strong><small>{home.place}</small></span></div><Badge tone={i ? "warning" : "success"}>{i ? "Pending approval" : "Approved"}</Badge><strong>{home.price}</strong><span>{i ? "2 hours ago" : "Yesterday"}</span><button className="icon-button"><Icon name="more" /></button></div>)}</div><div className="ds-pagination"><span>Showing 1–2 of 24 listings</span><div><Button variant="secondary">Previous</Button><Button variant="secondary">Next</Button></div></div>
+    </section>
+  </div>;
 }
 
-function Empty({
-  icon,
-  title,
-  text,
-}: {
-  icon: IconName
-  title: string
-  text: string
-}) {
-  return (
-    <div className="empty">
-      <span>
-        <Icon name={icon} size={28} />
-      </span>
-      <h2>{title}</h2>
-      <p>{text}</p>
-      <Button>Explore homes</Button>
-    </div>
-  )
+function Empty({ icon, title, text }: { icon: IconName; title: string; text: string }) {
+  return <div className="empty"><span><Icon name={icon} size={28} /></span><h2>{title}</h2><p>{text}</p><Button>Explore homes</Button></div>;
 }
 
 export default function App() {
-  const { user, isLoading } = useAuth()
-  if (isLoading) return <PageLoader />
-  return (
-    <FavoritesProvider key={user?.id ?? "guest"}>
-      <Workspace />
-    </FavoritesProvider>
-  )
+  const {user,isLoading} = useAuth();
+  if(isLoading) return <PageLoader/>;
+  return <FavoritesProvider key={user?.id ?? "guest"}><Workspace/></FavoritesProvider>;
 }
 
 function Workspace() {
-  const { user, logout, error, sessionExpired, refreshUser } = useAuth()
-  const { favorites, error: favoritesError } = useFavorites()
-  const [propertyReturn] = useState(() =>
-    user ? consumePropertyReturn() : null,
-  )
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(
-    propertyReturn?.propertyId ?? null,
-  )
-  const navigation = useWorkspaceNavigation(
-    user ? (propertyReturn ? "Listing details" : dashboard(user.role)) : "Home",
-    propertyReturn?.propertyId,
-  )
-  const {
-    page,
-    setPage,
-    navigate,
-    filter,
-    conversation: selectedConversationId,
-    selectConversation: setSelectedConversationId,
-  } = navigation
-  const ownerSummary = useOwnerSummary(user?.role === "owner")
-  const summaryState = useDashboardSummary(user?.role === "renter")
-  const openSummary = (kind: string) => {
-    if (kind === "savedProperties") navigate("Saved homes")
-    else if (kind === "activeBookings")
-      navigate("Bookings", { filter: "active" })
-    else if (kind === "pendingRequests")
-      navigate("Bookings", { filter: "pending" })
-    else
-      navigate("Messages", {
-        filter: "unread",
-        conversation: summaryState.summary?.latestUnreadConversationId,
-      })
-  }
-  useEffect(() => {
-    if (navigation.property) setSelectedPropertyId(navigation.property)
-  }, [navigation.property])
-  const openConversation = (id: number) => {
-    navigate(user?.role === "owner" ? "Owner messages" : "Messages", {
-      conversation: id,
-    })
-  }
-  const loginForProperty = (propertyId: number, action = "view") => {
-    try {
-      sessionStorage.setItem(
-        "rentnest:property-return",
-        JSON.stringify({
-          propertyId,
-          action,
-          expiresAt: Date.now() + 15 * 60 * 1000,
-        }),
-      )
-    } catch {}
-    setPage("Login")
-  }
-  const chatForProperty = async (id: number) => {
-    try {
-      const result = await rentalService.startConversation(id)
-      openConversation(result.conversationId)
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Unable to open chat",
-      )
-    }
-  }
-  const viewProperty = (id: number) => {
-    setSelectedPropertyId(id)
-    navigate("Listing details", {
-      property: id,
-      filter:
-        user?.role === "owner" && page === "Owner listings"
-          ? filter
-          : undefined,
-    })
-  }
-  const [appLoading, setAppLoading] = useState(true)
+  const {user,logout,error} = useAuth();
+  const {favorites} = useFavorites();
+  const [propertyReturn] = useState(()=>user?consumePropertyReturn():null);
+  const [selectedPropertyId,setSelectedPropertyId] = useState<number|null>(propertyReturn?.propertyId??null);
+  const navigation=useWorkspaceNavigation(user ? propertyReturn ? "Listing details" : dashboard(user.role) : "Home",propertyReturn?.propertyId);
+  const {page,setPage,navigate,filter,conversation:selectedConversationId,selectConversation:setSelectedConversationId}=navigation;
+  const summaryState=useDashboardSummary(user?.role==="renter");
+  const openSummary=(kind:string)=>{if(kind==="savedProperties")navigate("Saved homes");else if(kind==="activeBookings")navigate("Bookings",{filter:"active"});else if(kind==="pendingRequests")navigate("Bookings",{filter:"pending"});else navigate("Messages",{filter:"unread",conversation:summaryState.summary?.latestUnreadConversationId});};
+  useEffect(()=>{if(navigation.property)setSelectedPropertyId(navigation.property)},[navigation.property]);
+  const openConversation=(id:number)=>{navigate(user?.role==="owner"?"Owner messages":"Messages",{conversation:id});};
+  const loginForProperty=(propertyId:number,action="view")=>{try{sessionStorage.setItem("rentnest:property-return",JSON.stringify({propertyId,action,expiresAt:Date.now()+15*60*1000}));}catch{}setPage("Login");};
+  const chatForProperty=async(id:number)=>{try{const result=await rentalService.startConversation(id);openConversation(result.conversationId);}catch(error){window.alert(error instanceof Error?error.message:"Unable to open chat");}};
+  const viewProperty=(id:number)=>{setSelectedPropertyId(id);navigate("Listing details",{property:id});};
+  const viewOwnerProperty=(id:number)=>{setSelectedPropertyId(id);navigate("Owner property details",{property:id});};
+  const [appLoading,setAppLoading]=useState(true);
 
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const noticeState = useNotifications(Boolean(user))
-  const notifications: AppNotification[] = (
-    noticeState.error ? [] : noticeState.notices
-  ).map((item) => ({
-    id: item.id,
-    icon:
-      item.category === "booking"
-        ? "calendar"
-        : item.category === "message"
-          ? "message"
-          : "building",
-    title: item.title,
-    message: item.body,
-    time: new Date(item.createdAt).toLocaleString("en-GB", {
-      timeZone: "Asia/Dhaka",
-    }),
-    read: Boolean(item.readAt),
-    tone: "brand",
-    category:
-      item.category === "booking"
-        ? "Booking"
-        : item.category === "message"
-          ? "Messages"
-          : "Listings",
-  }))
-  const setNotifications: Dispatch<SetStateAction<AppNotification[]>> = (
-    next,
-  ) => {
-    const updated = typeof next === "function" ? next(notifications) : next
-    const changed = updated.filter(
-      (item) =>
-        item.read && !notifications.find((old) => old.id === item.id)?.read,
-    )
-    changed.forEach((item) => void noticeState.markRead(item.id))
-  }
-  const [sessionMenuOpen, setSessionMenuOpen] = useState(false)
-  const [logoutOpen, setLogoutOpen] = useState(false)
-  useEffect(() => {
-    const timer = window.setTimeout(() => setAppLoading(false), 520)
-    return () => window.clearTimeout(timer)
-  }, [])
-  const role =
-    user?.role === "owner"
-      ? "Owner"
-      : user?.role === "admin"
-        ? "Admin"
-        : user?.role === "renter"
-          ? "Renter"
-          : "Guest"
-  const accountName = user?.name ?? ""
-  const accountInitials = initials(accountName)
-  const unreadNotificationCount = noticeState.error ? 0 : noticeState.unread
-  const adminSummary = useAdminOverview(user?.role === "admin")
-  const ownerPage = (
-    view: "dashboard" | "listings" | "property" | "payments" | "profile",
-    id: number | null = null,
-  ) => (
-    <OwnerWorkspace
-      view={view}
-      propertyId={id}
-      go={navigate}
-      filter={filter}
-      onFilter={navigation.setFilter}
-      onView={viewProperty}
-      onRead={(id) => void noticeState.markRead(id)}
-      summary={ownerSummary}
-    />
-  )
+  const [saved, setSaved] = useState<number[]>([]);
+  const [selectedHome, setSelectedHome] = useState(0);
+  const [selectedBooking, setSelectedBooking] = useState(initialBookings[0].id);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [mobileNavOpen,setMobileNavOpen]=useState(false);
+  const noticeState=useNotifications(Boolean(user));
+  const notifications:AppNotification[]=noticeState.notices.map(item=>({id:item.id,icon:item.category==="booking"?"calendar":item.category==="message"?"message":"building",title:item.title,message:item.body,time:new Date(item.createdAt).toLocaleString("en-GB",{timeZone:"Asia/Dhaka"}),read:Boolean(item.readAt),tone:"brand",category:item.category==="booking"?"Booking":item.category==="message"?"Messages":"Listings"}));
+  const setNotifications:Dispatch<SetStateAction<AppNotification[]>>=next=>{const updated=typeof next==="function"?next(notifications):next;const changed=updated.filter(item=>item.read&&!notifications.find(old=>old.id===item.id)?.read);if(changed.length===notifications.filter(item=>!item.read).length&&changed.length)void noticeState.markRead();else changed.forEach(item=>void noticeState.markRead(item.id));};
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  useEffect(()=>{const timer=window.setTimeout(()=>setAppLoading(false),520);return()=>window.clearTimeout(timer);},[]);
+  const toggleSaved = (i: number) => setSaved(current => current.includes(i) ? current.filter(x => x !== i) : [...current, i]);
+  const viewHome = (i: number) => { setSelectedHome(i); setPage("Property details"); };
+  const editHome = (i: number) => { setSelectedHome(i); setPage("Owner edit property"); };
+  const viewBooking = (id: string) => { setSelectedBooking(id); setPage("Booking details"); };
+  const role = user?.role === "owner" ? "Owner" : user?.role === "admin" ? "Admin" : "Renter";
+  const accountName = user?.name ?? "";
+  const accountInitials = initials(accountName);
+  const unreadNotificationCount=notifications.filter(item=>!item.read).length;
   const pages: Record<string, ReactNode> = {
-    Discover: (
-      <Discovery
-        key={filter}
-        initialFilter={filter}
-        onView={viewProperty}
-        onLogin={() => setPage("Login")}
-      />
-    ),
-    "Listing details": selectedPropertyId ? (
-      <DatabasePropertyDetails
-        key={selectedPropertyId}
-        id={selectedPropertyId}
-        onBack={() => {
-          const parent = history.state?.fromView
-          if (
-            user?.role === "owner" &&
-            [
-              "Owner listings",
-              "Owner workspace",
-              "Owner booking requests",
-              "Owner booking details",
-            ].includes(parent)
-          )
-            navigate(parent, {
-              filter:
-                typeof history.state?.fromFilter === "string"
-                  ? history.state.fromFilter
-                  : "",
-            })
-          else setPage("Discover")
-        }}
-        onLogin={(action) => loginForProperty(selectedPropertyId, action)}
-        onChat={openConversation}
-        onBookings={() => setPage("Bookings")}
-      />
-    ) : null,
-    "Renter dashboard": (
-      <RenterDashboard
-        go={setPage}
-        viewProperty={viewProperty}
-        summaryState={summaryState}
-        onSummary={openSummary}
-        notifications={notifications}
-      />
-    ),
-    "Saved homes": (
-      <FavoritesPage
-        onView={viewProperty}
-        onLogin={() => setPage("Login")}
-        onBrowse={() => setPage("Discover")}
-      />
-    ),
-    Bookings: (
-      <LiveBookings
-        filter={filter}
-        onFilter={navigation.setFilter}
-        onProperty={viewProperty}
-        onChat={(id) => void chatForProperty(id)}
-      />
-    ),
-    "Booking details": (
-      <LiveBookings
-        filter={filter}
-        onFilter={navigation.setFilter}
-        onProperty={viewProperty}
-        onChat={(id) => void chatForProperty(id)}
-      />
-    ),
-    Messages: (
-      <LiveMessages
-        filter={filter}
-        onFilter={navigation.setFilter}
-        selectedId={selectedConversationId}
-        onSelect={setSelectedConversationId}
-        onProperty={viewProperty}
-      />
-    ),
-    "Owner messages": (
-      <LiveMessages
-        filter={filter}
-        onFilter={navigation.setFilter}
-        selectedId={selectedConversationId}
-        onSelect={setSelectedConversationId}
-        onProperty={viewProperty}
-      />
-    ),
-    "Owner earnings": ownerPage("payments"),
-    Notifications: noticeState.error ? (
-      <ErrorState
-        type="network"
-        title="Unable to load notifications"
-        description={noticeState.error}
-        primaryLabel="Retry"
-        onPrimary={noticeState.refresh}
-      />
-    ) : (
-      <NotificationsPage
-        onMarkAll={() => void noticeState.markRead()}
-        go={setPage}
-        notifications={notifications}
-        setNotifications={setNotifications}
-        dashboardPage="Renter dashboard"
-      />
-    ),
-    "Owner notifications": noticeState.error ? (
-      <ErrorState
-        type="network"
-        title="Unable to load notifications"
-        description={noticeState.error}
-        primaryLabel="Retry"
-        onPrimary={noticeState.refresh}
-      />
-    ) : (
-      <NotificationsPage
-        activeFilter={filter}
-        onFilter={navigation.setFilter}
-        onMarkAll={() => void noticeState.markRead()}
-        onOpen={(id) => {
-          const n = noticeState.notices.find((n) => n.id === id)
-          if (n?.conversationId) openConversation(n.conversationId)
-          else if (n?.bookingId)
-            navigate("Owner booking requests", {
-              filter: "booking:" + n.bookingId,
-            })
-          else if (n?.propertyId) viewProperty(n.propertyId)
-        }}
-        go={setPage}
-        notifications={notifications}
-        setNotifications={setNotifications}
-        dashboardPage="Owner workspace"
-      />
-    ),
-    "Admin notifications": noticeState.error ? (
-      <ErrorState
-        type="network"
-        title="Unable to load notifications"
-        description={noticeState.error}
-        primaryLabel="Retry"
-        onPrimary={noticeState.refresh}
-      />
-    ) : (
-      <NotificationsPage
-        onMarkAll={() => void noticeState.markRead()}
-        go={setPage}
-        notifications={notifications}
-        setNotifications={setNotifications}
-        dashboardPage="Admin overview"
-      />
-    ),
-    "Owner workspace": ownerPage("dashboard"),
-    "Owner listings": ownerPage("listings"),
-    "Owner add property": ownerPage("property"),
-    "Owner edit property": navigation.property
-      ? ownerPage("property", navigation.property)
-      : ownerPage("listings"),
-    "Owner booking requests": (
-      <LiveBookings
-        onConversation={openConversation}
-        filter={filter}
-        onFilter={navigation.setFilter}
-        onProperty={viewProperty}
-        onChat={(id) => void chatForProperty(id)}
-      />
-    ),
-    "Owner booking details": (
-      <LiveBookings
-        onConversation={openConversation}
-        filter={filter}
-        onFilter={navigation.setFilter}
-        onProperty={viewProperty}
-        onChat={(id) => void chatForProperty(id)}
-      />
-    ),
-    "Admin overview": (
-      <AdminWorkspace
-        view="Admin overview"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    "Admin users": (
-      <AdminWorkspace
-        view="Admin users"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    "Admin listings": (
-      <ListingCollection
-        filter={filter}
-        onFilter={navigation.setFilter}
-        mode="admin"
-        onView={viewProperty}
-        onLogin={() => setPage("Login")}
-      />
-    ),
-    "Admin bookings": (
-      <LiveBookings
-        filter={filter}
-        onFilter={navigation.setFilter}
-        onProperty={viewProperty}
-        onChat={() => {}}
-      />
-    ),
-    "Admin payments": (
-      <AdminWorkspace
-        view="Admin payments"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    "Admin analytics": (
-      <AdminWorkspace
-        view="Admin analytics"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    "Admin logs": (
-      <AdminWorkspace
-        view="Admin logs"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    "Admin settings": (
-      <AdminWorkspace
-        view="Admin settings"
-        state={adminSummary}
-        filter={filter}
-        go={(page, filter) => navigate(page, { filter })}
-      />
-    ),
-    Settings: <AccountSettings />,
-    "Owner profile": ownerPage("profile"),
+    Discover: <Discovery onView={viewProperty} onLogin={()=>setPage("Login")}/>,
+    "Listing details": selectedPropertyId ? <DatabasePropertyDetails key={selectedPropertyId} id={selectedPropertyId} onBack={()=>setPage("Discover")} onLogin={action=>loginForProperty(selectedPropertyId,action)} onChat={openConversation} onBookings={()=>setPage("Bookings")}/> : null,
+    "Renter dashboard": <RenterDashboard saved={saved} toggleSaved={toggleSaved} go={setPage} viewHome={viewHome} viewProperty={viewProperty} summaryState={summaryState} onSummary={openSummary} notifications={notifications}/>,
+    "Saved homes": <FavoritesPage onView={viewProperty} onLogin={()=>setPage("Login")} onBrowse={()=>setPage("Discover")}/>,
+    Bookings: <LiveBookings filter={filter} onFilter={navigation.setFilter} onProperty={viewProperty} onChat={id=>void chatForProperty(id)}/>,
+    "Booking details": <LiveBookings filter={filter} onFilter={navigation.setFilter} onProperty={viewProperty} onChat={id=>void chatForProperty(id)}/>,
+    Messages: <LiveMessages filter={filter} onFilter={navigation.setFilter} selectedId={selectedConversationId} onSelect={setSelectedConversationId} onProperty={viewProperty}/>,
+    "Owner messages": <LiveMessages filter={filter} onFilter={navigation.setFilter} selectedId={selectedConversationId} onSelect={setSelectedConversationId} onProperty={viewProperty}/>,
+    "Owner earnings": <OwnerPayments />,
+    Notifications: <NotificationsPage go={setPage} notifications={notifications} setNotifications={setNotifications} dashboardPage="Renter dashboard" />,
+    "Owner notifications": <NotificationsPage go={setPage} notifications={notifications} setNotifications={setNotifications} dashboardPage="Owner workspace" />,
+    "Admin notifications": <NotificationsPage go={setPage} notifications={notifications} setNotifications={setNotifications} dashboardPage="Admin overview" />,
+    "Owner workspace": <OwnerDashboard go={setPage} onViewProperty={viewOwnerProperty} />,
+    "Owner listings": <ListingCollection mode="owner" onView={viewOwnerProperty} onLogin={()=>setPage("Login")}/>,
+    "Owner property details": selectedPropertyId ? <OwnerPropertyDetails key={selectedPropertyId} id={selectedPropertyId} onBack={()=>setPage("Owner listings")} /> : null,
+    "Owner add property": <AddPropertyWizard go={setPage} />,
+    "Owner edit property": <ListingCollection mode="owner" onView={viewOwnerProperty} onLogin={()=>setPage("Login")}/>,
+    "Owner booking requests": <LiveBookings filter={filter} onFilter={navigation.setFilter} onProperty={viewProperty} onChat={id=>void chatForProperty(id)}/>,
+    "Owner booking details": <LiveBookings filter={filter} onFilter={navigation.setFilter} onProperty={viewProperty} onChat={id=>void chatForProperty(id)}/>,
+    "Admin overview": <AdminLive go={setPage} />,
+    "Admin users": <AdminUsers />,
+    "Admin listings": <AdminListings />,
+    "Admin bookings": <LiveBookings filter={filter} onFilter={navigation.setFilter} onProperty={viewProperty} onChat={()=>{}}/>,
+    "Admin payments": <AdminPayments />,
+    "Admin analytics": <AdminAnalyticsLive />,
+    "Admin logs": <AdminActivityLogs />,
+    "Admin settings": <AdminSystemSettings />,
+    Settings: <Settings key="renter-settings" go={setPage} />,
+    "Owner profile": <Settings key="owner-settings" go={setPage} ownerMode />,
     "Design system": <DesignSystem />,
-    "Session and security": <SessionSecurity />,
-  }
-  if (appLoading) return <PageLoader />
-  const publicPages = [
-    "Discover",
-    "Listing details",
-    "Home",
-    "Property details",
-    "Login",
-    "Register",
-    "Forgot password",
-    "Access denied",
-    "Session expired",
-  ]
-  if (!user && !publicPages.includes(page)) {
-    try {
-      const path = safeReturnPath("/" + location.search)
-      if (path) sessionStorage.setItem("rentnest:login-return", path)
-    } catch {}
-    return (
-      <>
-        {sessionExpired && (
-          <p className="form-error-message" role="alert">
-            Your session expired. Sign in again to continue.
-          </p>
-        )}
-        {error ? (
-          <ErrorState
-            type="network"
-            fullPage
-            title="Unable to check your session"
-            description={error.message}
-            primaryLabel="Retry"
-            onPrimary={() => void refreshUser()}
-          />
-        ) : (
-          <AuthPage mode="login" go={setPage} />
-        )}
-      </>
-    )
-  }
-  if (error && user && !publicPages.includes(page))
-    return (
-      <ErrorState
-        type="network"
-        fullPage
-        title="Unable to check your session"
-        description={error.message}
-        primaryLabel="Retry"
-        onPrimary={() => void refreshUser()}
-      />
-    )
-  if (user && requiredRole(page) && requiredRole(page) !== user.role)
-    return <AccessDeniedPage go={setPage} />
-  if (page === "Discover" || page === "Listing details")
-    return (
-      <div className="public-listings-page">
-        <header className="public-listings-nav">
-          <button className="brand" onClick={() => setPage("Home")}>
-            <span className="brand-mark">
-              <i />
-              <i />
-            </span>
-            <strong>RentNest</strong>
-          </button>
-          <button
-            className="button button-secondary"
-            onClick={() => setPage(user ? dashboard(user.role) : "Login")}
-          >
-            {user ? "My dashboard" : "Login"}
-          </button>
-        </header>
-        {error && (
-          <p role="alert" className="form-error-message">
-            {error.message}{" "}
-            <button onClick={() => void refreshUser()}>
-              Retry session check
-            </button>
-          </p>
-        )}
-        {pages[page]}
-      </div>
-    )
-  if (page === "Home")
-    return (
-      <>
-        {error && (
-          <p className="form-error-message" role="alert">
-            {error.message}{" "}
-            <button onClick={() => void refreshUser()}>
-              Retry session check
-            </button>
-          </p>
-        )}
-        <Landing
-          onSearch={(criteria) =>
-            navigate("Discover", { filter: JSON.stringify(criteria) })
-          }
-          go={setPage}
-          viewProperty={viewProperty}
-        />
-      </>
-    )
-  if (page === "Property details")
-    return selectedPropertyId ? (
-      <DatabasePropertyDetails
-        id={selectedPropertyId}
-        onBack={() => setPage("Discover")}
-        onLogin={(action) => loginForProperty(selectedPropertyId, action)}
-        onChat={openConversation}
-        onBookings={() => setPage("Bookings")}
-      />
-    ) : (
-      <ErrorState
-        type="not-found"
-        title="Property not found"
-        primaryLabel="Browse properties"
-        onPrimary={() => setPage("Discover")}
-      />
-    )
-  if (page === "Login") return <AuthPage mode="login" go={setPage} />
-  if (page === "Register") return <RegistrationPage go={setPage} />
-  if (page === "Forgot password") return <ForgotPasswordPage go={setPage} />
-  if (page === "Access denied") return <AccessDeniedPage go={setPage} />
-  if (page === "Session expired")
-    return user ? <SessionSecurity /> : <SessionExpiredPage go={setPage} />
-  if (page.startsWith("Redirect "))
-    return (
-      <RoleRedirectPage
-        role={page.replace("Redirect ", "") as "Renter" | "Owner" | "Admin"}
-        go={setPage}
-      />
-    )
-  if (!pages[page])
-    return (
-      <ErrorState
-        type="not-found"
-        fullPage
-        title="Page not found."
-        description="The page may have moved or the address may be incorrect."
-        primaryLabel="Go Home"
-        onPrimary={() => setPage("Home")}
-        secondaryLabel="Back"
-        onSecondary={() => window.history.back()}
-      />
-    )
-  return (
-    <div className={`app-shell role-${role.toLowerCase()}`}>
-      <aside className={`sidebar ${mobileNavOpen ? "mobile-open" : ""}`}>
-        <button className="brand" onClick={() => setPage("Home")}>
-          <span className="brand-mark">
-            <i />
-            <i />
-          </span>
-          <strong>{role === "Admin" ? "RentNest Admin" : "RentNest"}</strong>
-        </button>
-        <nav onClick={() => setMobileNavOpen(false)}>
-          {role === "Renter" ? (
-            <>
-              <p>RENTER</p>
-              <NavItem
-                icon="home"
-                label="Dashboard"
-                active={page === "Renter dashboard"}
-                onClick={() => setPage("Renter dashboard")}
-              />
-              <NavItem
-                icon="search"
-                label="Discover Properties"
-                onClick={() => setPage("Discover")}
-              />
-              <NavItem
-                icon="heart"
-                label="Favorites"
-                active={page === "Saved homes"}
-                onClick={() => setPage("Saved homes")}
-                badge={favoritesError ? undefined : String(favorites.length)}
-              />
-              <NavItem
-                icon="calendar"
-                label="My Bookings"
-                active={page === "Bookings" || page === "Booking details"}
-                onClick={() => setPage("Bookings")}
-              />
-              <NavItem
-                icon="message"
-                label="Messages"
-                badge={
-                  !summaryState.error && summaryState.summary?.unreadMessages
-                    ? String(summaryState.summary.unreadMessages)
-                    : undefined
-                }
-                active={page === "Messages"}
-                onClick={() => setPage("Messages")}
-              />
-              <NavItem
-                icon="bell"
-                label="Notifications"
-                active={page === "Notifications"}
-                onClick={() => setPage("Notifications")}
-                badge={
-                  unreadNotificationCount
-                    ? String(unreadNotificationCount)
-                    : undefined
-                }
-              />
-              <NavItem
-                icon="users"
-                label="Profile"
-                active={page === "Settings"}
-                onClick={() => setPage("Settings")}
-              />
-            </>
-          ) : role === "Owner" ? (
-            <>
-              <p>OWNER</p>
-              <NavItem
-                icon="home"
-                label="Dashboard"
-                active={page === "Owner workspace"}
-                onClick={() => setPage("Owner workspace")}
-              />
-              <NavItem
-                icon="building"
-                label="My Listings"
-                active={
-                  page === "Owner listings" ||
-                  page === "Owner add property" ||
-                  page === "Owner edit property"
-                }
-                onClick={() => setPage("Owner listings")}
-              />
-              <NavItem
-                icon="calendar"
-                label="Booking Requests"
-                active={
-                  page === "Owner booking requests" ||
-                  page === "Owner booking details"
-                }
-                onClick={() => setPage("Owner booking requests")}
-              />
-              <NavItem
-                icon="message"
-                label="Messages"
-                badge={
-                  !ownerSummary.error &&
-                  ownerSummary.data?.counts.unreadMessages
-                    ? String(ownerSummary.data.counts.unreadMessages)
-                    : undefined
-                }
-                active={page === "Owner messages"}
-                onClick={() => setPage("Owner messages")}
-              />
-              <NavItem
-                icon="star"
-                label="Payments"
-                active={page === "Owner earnings"}
-                onClick={() => setPage("Owner earnings")}
-              />
-              <NavItem
-                icon="bell"
-                label="Notifications"
-                active={page === "Owner notifications"}
-                onClick={() => setPage("Owner notifications")}
-                badge={
-                  unreadNotificationCount
-                    ? String(unreadNotificationCount)
-                    : undefined
-                }
-              />
-              <NavItem
-                icon="users"
-                label="Profile"
-                active={page === "Owner profile"}
-                onClick={() => setPage("Owner profile")}
-              />
-            </>
-          ) : (
-            <>
-              <p>ADMINISTRATION</p>
-              <NavItem
-                icon="home"
-                label="Dashboard"
-                active={page === "Admin overview"}
-                onClick={() => setPage("Admin overview")}
-              />
-              <NavItem
-                icon="users"
-                label="User Management"
-                active={page === "Admin users"}
-                onClick={() => setPage("Admin users")}
-              />
-              <NavItem
-                icon="building"
-                label="Listing Management"
-                active={page === "Admin listings"}
-                onClick={() => setPage("Admin listings")}
-                badge={
-                  adminSummary.error
-                    ? undefined
-                    : adminSummary.data?.counts.pendingListings
-                      ? String(adminSummary.data.counts.pendingListings)
-                      : undefined
-                }
-              />
-              <NavItem
-                icon="calendar"
-                label="Booking Management"
-                active={page === "Admin bookings"}
-                onClick={() => setPage("Admin bookings")}
-              />
-              <NavItem
-                icon="star"
-                label="Payments & Reports"
-                active={page === "Admin payments"}
-                onClick={() => setPage("Admin payments")}
-              />
-              <NavItem
-                icon="sliders"
-                label="Analytics"
-                active={page === "Admin analytics"}
-                onClick={() => setPage("Admin analytics")}
-              />
-              <NavItem
-                icon="more"
-                label="Activity Logs"
-                active={page === "Admin logs"}
-                onClick={() => setPage("Admin logs")}
-              />
-              <NavItem
-                icon="settings"
-                label="Settings"
-                active={page === "Admin settings"}
-                onClick={() => setPage("Admin settings")}
-              />
-            </>
-          )}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="user-card">
-            <span className="avatar profile">{accountInitials}</span>
-            <span>
-              <strong>{accountName}</strong>
-              <small className={`role-badge ${role.toLowerCase()}`}>
-                {role}
-              </small>
-            </span>
-            <button
-              className="sidebar-logout"
-              onClick={() => setLogoutOpen(true)}
-            >
-              <Icon name="logout" size={16} />
-              <small>Logout</small>
-            </button>
-          </div>
-        </div>
-      </aside>
-      {mobileNavOpen && (
-        <button
-          className="sidebar-drawer-backdrop"
-          onClick={() => setMobileNavOpen(false)}
-          aria-label="Close navigation"
-        />
-      )}
-      <div className="mobile-top">
-        <div className="mobile-brand-group">
-          <button
-            className="hamburger-button"
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Open navigation menu"
-          >
-            <i />
-            <i />
-            <i />
-          </button>
-          <button
-            className="brand"
-            onClick={() =>
-              setPage(
-                role === "Renter"
-                  ? "Renter dashboard"
-                  : role === "Owner"
-                    ? "Owner workspace"
-                    : "Admin overview",
-              )
-            }
-          >
-            <span className="brand-mark">
-              <i />
-              <i />
-            </span>
-            <strong>{role === "Admin" ? "RentNest Admin" : "RentNest"}</strong>
-          </button>
-        </div>
-        <div>
-          <span className={`role-badge ${role.toLowerCase()}`}>{role}</span>
-          <button
-            className={`icon-button notification ${
-              unreadNotificationCount ? "has-unread" : ""
-            }`}
-            onClick={() =>
-              setPage(
-                role === "Owner"
-                  ? "Owner notifications"
-                  : role === "Admin"
-                    ? "Admin notifications"
-                    : "Notifications",
-              )
-            }
-          >
-            <Icon name="bell" />
-            {unreadNotificationCount > 0 && <b>{unreadNotificationCount}</b>}
-          </button>
-          <span className="avatar">{accountInitials}</span>
-        </div>
-      </div>
-      <MobileBottomNav role={role} page={page} go={setPage} />
-      <main>
-        <div className="topbar">
-          {page === "Renter dashboard" && (
-            <div className="dashboard-greeting">
-              <small>
-                {new Date()
-                  .toLocaleDateString("en-GB", {
-                    timeZone: "Asia/Dhaka",
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })
-                  .toUpperCase()}
-              </small>
-              <strong>Welcome back, {accountName}</strong>
-            </div>
-          )}
-          {page === "Owner workspace" && (
-            <div className="dashboard-greeting">
-              <small>PROPERTY OWNER</small>
-              <strong>Welcome back, {accountName}</strong>
-            </div>
-          )}
-          {page === "Admin overview" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>PLATFORM ADMINISTRATION</small>
-              <strong>Admin Dashboard</strong>
-            </div>
-          )}
-          {page === "Admin users" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>ADMINISTRATION</small>
-              <strong>User Management</strong>
-            </div>
-          )}
-          {page === "Admin listings" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>CONTENT MODERATION</small>
-              <strong>Listing Management</strong>
-            </div>
-          )}
-          {page === "Admin bookings" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>PLATFORM OPERATIONS</small>
-              <strong>Booking Management</strong>
-            </div>
-          )}
-          {page === "Admin payments" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>FINANCIAL OPERATIONS</small>
-              <strong>Payments & Reports</strong>
-            </div>
-          )}
-          {page === "Admin analytics" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>BUSINESS INTELLIGENCE</small>
-              <strong>Analytics Dashboard</strong>
-            </div>
-          )}
-          {page === "Admin logs" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>SECURITY & COMPLIANCE</small>
-              <strong>Activity Logs</strong>
-            </div>
-          )}
-          {page === "Admin settings" && (
-            <div className="dashboard-greeting admin-top-title">
-              <small>PLATFORM CONFIGURATION</small>
-              <strong>System Settings</strong>
-            </div>
-          )}
-          <span
-            className={`workspace-label ${
-              page === "Renter dashboard" ||
-              page === "Owner workspace" ||
-              role === "Admin"
-                ? "dashboard-hidden"
-                : ""
-            }`}
-          >
-            <i />
-            {role} workspace
-          </span>
-          <div
-            className={`global-search ${
-              page === "Renter dashboard" || page === "Owner workspace"
-                ? "dashboard-hidden"
-                : ""
-            }`}
-          >
-            <Icon name="search" />
-            <input
-              aria-label="Search workspace"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (role === "Owner")
-                    navigate("Owner listings", {
-                      filter: JSON.stringify({ search: e.currentTarget.value }),
-                    })
-                  else if (role === "Renter")
-                    navigate("Discover", {
-                      filter: JSON.stringify({ search: e.currentTarget.value }),
-                    })
-                  else
-                    navigate("Admin users", { filter: e.currentTarget.value })
-                }
-              }}
-              placeholder={
-                role === "Admin"
-                  ? "Search users, listings, bookings..."
-                  : "Search homes, bookings, messages..."
-              }
-            />
-          </div>
-          {page === "Renter dashboard" && (
-            <button
-              className="icon-button header-search"
-              onClick={() => setPage("Discover")}
-            >
-              <Icon name="search" />
-            </button>
-          )}
-          <div className="notification-wrap">
-            <button
-              className={`icon-button notification ${
-                unreadNotificationCount ? "has-unread" : ""
-              }`}
-              onClick={() => setNotificationsOpen((open) => !open)}
-              aria-label={
-                noticeState.error
-                  ? "Notifications unavailable"
-                  : `${unreadNotificationCount} unread notifications`
-              }
-            >
-              <Icon name="bell" />
-              {unreadNotificationCount > 0 && (
-                <b>
-                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                </b>
-              )}
-            </button>
-            {notificationsOpen && (
-              <div className="notifications-popover">
-                <div className="notification-popover-head">
-                  <span>
-                    <strong>Notifications</strong>
-                    <small>{unreadNotificationCount} unread</small>
-                  </span>
-                  <button
-                    onClick={() => void noticeState.markRead()}
-                    disabled={!unreadNotificationCount}
-                  >
-                    Mark all as read
-                  </button>
-                </div>
-                <div className="notification-popover-list">
-                  {notifications.slice(0, 4).map((item) => (
-                    <article
-                      className={item.read ? "" : "unread"}
-                      key={item.id}
-                      tabIndex={0}
-                      role="button"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          const n = noticeState.notices.find(
-                            (n) => n.id === item.id,
-                          )
-                          void noticeState.markRead(item.id)
-                          if (n?.conversationId)
-                            openConversation(n.conversationId)
-                          else if (n?.bookingId)
-                            navigate(
-                              user?.role === "owner"
-                                ? "Owner booking requests"
-                                : "Bookings",
-                              { filter: "booking:" + n.bookingId },
-                            )
-                          else if (n?.propertyId) viewProperty(n.propertyId)
-                        }
-                      }}
-                      onClick={() => {
-                        const n = noticeState.notices.find(
-                          (n) => n.id === item.id,
-                        )
-                        void noticeState.markRead(item.id)
-                        if (n?.conversationId)
-                          openConversation(n.conversationId)
-                        else if (n?.bookingId)
-                          navigate(
-                            user?.role === "owner"
-                              ? "Owner booking requests"
-                              : "Bookings",
-                            { filter: "booking:" + n.bookingId },
-                          )
-                        else if (n?.propertyId) viewProperty(n.propertyId)
-                        setNotificationsOpen(false)
-                      }}
-                    >
-                      <span
-                        className={`popover-notification-icon ${item.tone}`}
-                      >
-                        <Icon name={item.icon} />
-                      </span>
-                      <p>
-                        <small>{item.category}</small>
-                        <strong>{item.title}</strong>
-                        <span>{item.message}</span>
-                        <time>{item.time}</time>
-                      </p>
-                    </article>
-                  ))}
-                </div>
-                <button
-                  className="view-notifications"
-                  onClick={() => {
-                    setPage(
-                      role === "Owner"
-                        ? "Owner notifications"
-                        : role === "Admin"
-                          ? "Admin notifications"
-                          : "Notifications",
-                    )
-                    setNotificationsOpen(false)
-                  }}
-                >
-                  View all notifications <Icon name="arrow" size={13} />
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="session-menu-wrap">
-            <button
-              className="topbar-profile"
-              onClick={() => setSessionMenuOpen(!sessionMenuOpen)}
-            >
-              <span className="avatar">{accountInitials}</span>
-              <span>
-                <strong>{accountName}</strong>
-                <small className={`role-badge ${role.toLowerCase()}`}>
-                  {role}
-                </small>
-              </span>
-              <Icon name="chevron" size={15} />
-            </button>
-            {sessionMenuOpen && (
-              <div className="session-menu">
-                <div className="session-menu-user">
-                  <span className="avatar profile">{accountInitials}</span>
-                  <p>
-                    <strong>{accountName}</strong>
-                    <small>{user?.email}</small>
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setPage(
-                      role === "Renter"
-                        ? "Renter dashboard"
-                        : role === "Owner"
-                          ? "Owner workspace"
-                          : "Admin overview",
-                    )
-                    setSessionMenuOpen(false)
-                  }}
-                >
-                  <Icon name="home" /> Dashboard
-                </button>
-                <button
-                  onClick={() => {
-                    setPage(
-                      role === "Owner"
-                        ? "Owner profile"
-                        : role === "Admin"
-                          ? "Admin settings"
-                          : "Settings",
-                    )
-                    setSessionMenuOpen(false)
-                  }}
-                >
-                  <Icon name="settings" /> Account settings
-                </button>
-                <button
-                  onClick={() => {
-                    setPage("Session and security")
-                    setSessionMenuOpen(false)
-                  }}
-                >
-                  <Icon name="lock" /> Session & security
-                </button>
-                <button
-                  className="session-logout"
-                  onClick={() => {
-                    setLogoutOpen(true)
-                    setSessionMenuOpen(false)
-                  }}
-                >
-                  <Icon name="logout" /> Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="content">
-          {noticeState.error && (
-            <p className="form-error-message" role="alert">
-              {noticeState.error}{" "}
-              <button onClick={noticeState.refresh}>Retry notifications</button>
-            </p>
-          )}
-          {pages[page]}
-        </div>
-      </main>
-      {logoutOpen && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onMouseDown={() => setLogoutOpen(false)}
-        >
-          <section
-            className="modal logout-modal"
-            role="dialog"
-            aria-modal="true"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="modal-icon danger">
-              <Icon name="logout" />
-            </div>
-            <h2>Logout from RentNest?</h2>
-            <p className="modal-description">
-              You will need to login again to access your account.
-            </p>
-            <div className="logout-account">
-              <span className="avatar profile">{accountInitials}</span>
-              <p>
-                <strong>{accountName}</strong>
-                <small className={`role-badge ${role.toLowerCase()}`}>
-                  {role}
-                </small>
-              </p>
-            </div>
-            <div className="modal-actions">
-              <Button variant="secondary" onClick={() => setLogoutOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() =>
-                  void logout()
-                    .then(() => setPage("Home"))
-                    .catch((error) => window.alert(error.message))
-                }
-              >
-                Logout
-              </Button>
-            </div>
-          </section>
-        </div>
-      )}
-    </div>
-  )
+  };
+  if(appLoading)return <PageLoader/>;
+  const publicPages = ["Discover","Listing details","Home","About","Property details","Login","Register","Forgot password","Access denied","Session expired"];
+  if (!user && !publicPages.includes(page)) return <AuthPage mode="login" go={setPage}/>;
+  if(error && !user) return <ErrorState type="network" fullPage title="Unable to check your session" description={error.message} primaryLabel="Retry" onPrimary={()=>window.location.reload()}/>;
+  if(user && ((page.startsWith("Owner") && user.role!=="owner") || (page.startsWith("Admin") && user.role!=="admin"))) return <AccessDeniedPage go={setPage}/>;
+  if(!user && (page === "Discover" || page === "Listing details")) return <div className="public-listings-page"><header className="public-listings-nav"><button className="brand" onClick={()=>setPage("Home")}><span className="brand-mark"><i/><i/></span><strong>RentNest</strong></button><button className="button button-secondary" onClick={()=>setPage("Login")}>Login</button></header>{pages[page]}</div>;
+  if (page === "Home") return <Landing go={setPage} saved={saved} toggleSaved={toggleSaved} viewHome={viewHome} viewProperty={viewProperty}/>;
+  if (page === "About") return <AboutPage go={setPage} />;
+  if (page === "Property details") return <Discovery onView={viewProperty} onLogin={()=>setPage("Login")}/>;
+  if (page === "Login") return <AuthPage mode="login" go={setPage} />;
+  if (page === "Register") return <RegistrationPage go={setPage} />;
+  if (page === "Forgot password") return <ForgotPasswordPage go={setPage} />;
+  if (page === "Access denied") return <AccessDeniedPage go={setPage} />;
+  if (page === "Session expired") return <SessionExpiredPage go={setPage} />;
+  if (page.startsWith("Redirect ")) return <RoleRedirectPage role={page.replace("Redirect ","") as "Renter"|"Owner"|"Admin"} go={setPage} />;
+  if (!pages[page]) return <ErrorState type="not-found" fullPage title="Page not found." description="The page may have moved or the address may be incorrect." primaryLabel="Go Home" onPrimary={()=>setPage("Home")} secondaryLabel="Back" onSecondary={()=>window.history.back()}/>;
+  return <div className={`app-shell role-${role.toLowerCase()}`}>
+    <aside className={`sidebar ${mobileNavOpen?"mobile-open":""}`}>
+      <button className="brand" onClick={() => setPage(role==="Renter"?"Renter dashboard":role==="Owner"?"Owner workspace":role==="Admin"?"Admin overview":"Home")}><span className="brand-mark"><i /><i /></span><strong>{role==="Admin"?"RentNest Admin":"RentNest"}</strong></button>
+      <nav onClick={()=>setMobileNavOpen(false)}>
+        {role==="Renter"?<><p>RENTER</p><NavItem icon="home" label="Dashboard" active={page==="Renter dashboard"} onClick={()=>setPage("Renter dashboard")} /><NavItem icon="search" label="Discover Properties" onClick={()=>setPage("Discover")} /><NavItem icon="heart" label="Favorites" active={page==="Saved homes"} onClick={()=>setPage("Saved homes")} badge={String(favorites.length)} /><NavItem icon="calendar" label="My Bookings" active={page==="Bookings"||page==="Booking details"} onClick={()=>setPage("Bookings")} /><NavItem icon="message" label="Messages" badge={summaryState.summary?.unreadMessages?String(summaryState.summary.unreadMessages):undefined} active={page==="Messages"} onClick={()=>setPage("Messages")} /><NavItem icon="bell" label="Notifications" active={page==="Notifications"} onClick={()=>setPage("Notifications")} badge={unreadNotificationCount?String(unreadNotificationCount):undefined} /><NavItem icon="users" label="Profile" active={page==="Settings"} onClick={()=>setPage("Settings")} /></>:role==="Owner"?<><p>OWNER</p><NavItem icon="home" label="Dashboard" active={page==="Owner workspace"} onClick={()=>setPage("Owner workspace")} /><NavItem icon="building" label="My Listings" active={page==="Owner listings"||page==="Owner add property"||page==="Owner edit property"} onClick={()=>setPage("Owner listings")} /><NavItem icon="calendar" label="Booking Requests" active={page==="Owner booking requests"||page==="Owner booking details"} onClick={()=>setPage("Owner booking requests")} badge={notifications.filter(item=>!item.read&&item.category==="Booking").length?String(notifications.filter(item=>!item.read&&item.category==="Booking").length):undefined} /><NavItem icon="message" label="Messages" active={page==="Owner messages"} onClick={()=>setPage("Owner messages")} badge={notifications.filter(item=>!item.read&&item.category==="Messages").length?String(notifications.filter(item=>!item.read&&item.category==="Messages").length):undefined} /><NavItem icon="bell" label="Notifications" active={page==="Owner notifications"} onClick={()=>setPage("Owner notifications")} badge={unreadNotificationCount?String(unreadNotificationCount):undefined} /><NavItem icon="star" label="Payments" active={page==="Owner earnings"} onClick={()=>setPage("Owner earnings")} /><NavItem icon="users" label="Profile" active={page==="Owner profile"} onClick={()=>setPage("Owner profile")} /></>:<><p>ADMINISTRATION</p><NavItem icon="home" label="Dashboard" active={page==="Admin overview"} onClick={()=>setPage("Admin overview")} /><NavItem icon="users" label="User Management" active={page==="Admin users"} onClick={()=>setPage("Admin users")} /><NavItem icon="building" label="Listing Management" active={page==="Admin listings"} onClick={()=>setPage("Admin listings")} badge="3" /><NavItem icon="calendar" label="Booking Management" active={page==="Admin bookings"} onClick={()=>setPage("Admin bookings")} /><NavItem icon="star" label="Payments & Reports" active={page==="Admin payments"} onClick={()=>setPage("Admin payments")} /><NavItem icon="sliders" label="Analytics" active={page==="Admin analytics"} onClick={()=>setPage("Admin analytics")} /><NavItem icon="more" label="Activity Logs" active={page==="Admin logs"} onClick={()=>setPage("Admin logs")} /><NavItem icon="settings" label="Settings" active={page==="Admin settings"} onClick={()=>setPage("Admin settings")} /></>}
+      </nav>
+      <div className="sidebar-bottom"><div className="user-card"><span className="avatar profile">{accountInitials}</span><span><strong>{accountName}</strong><small className={`role-badge ${role.toLowerCase()}`}>{role}</small></span><button className="sidebar-logout" onClick={()=>setLogoutOpen(true)}><Icon name="logout" size={16} /><small>Logout</small></button></div></div>
+    </aside>
+    {mobileNavOpen&&<button className="sidebar-drawer-backdrop" onClick={()=>setMobileNavOpen(false)} aria-label="Close navigation"/>}
+    <div className="mobile-top"><div className="mobile-brand-group"><button className="hamburger-button" onClick={()=>setMobileNavOpen(true)} aria-label="Open navigation menu"><i/><i/><i/></button><button className="brand" onClick={()=>setPage(role==="Renter"?"Renter dashboard":role==="Owner"?"Owner workspace":"Admin overview")}><span className="brand-mark"><i /><i /></span><strong>{role==="Admin"?"RentNest Admin":"RentNest"}</strong></button></div><div><span className={`role-badge ${role.toLowerCase()}`}>{role}</span><button className={`icon-button notification ${unreadNotificationCount?"has-unread":""}`} onClick={()=>setPage(role==="Owner"?"Owner notifications":role==="Admin"?"Admin notifications":"Notifications")}><Icon name="bell" />{unreadNotificationCount>0&&<b>{unreadNotificationCount}</b>}</button><span className="avatar">{accountInitials}</span></div></div>
+    <MobileBottomNav role={role} page={page} go={setPage}/>
+    <main><div className="topbar">{page==="Renter dashboard"&&<div className="dashboard-greeting"><small>MONDAY, 16 JUNE</small><strong>Welcome back, {accountName}</strong></div>}{page==="Owner workspace"&&<div className="dashboard-greeting"><small>PROPERTY OWNER</small><strong>Welcome back, {accountName}</strong></div>}{page==="Admin overview"&&<div className="dashboard-greeting admin-top-title"><small>PLATFORM ADMINISTRATION</small><strong>Admin Dashboard</strong></div>}{page==="Admin users"&&<div className="dashboard-greeting admin-top-title"><small>ADMINISTRATION</small><strong>User Management</strong></div>}{page==="Admin listings"&&<div className="dashboard-greeting admin-top-title"><small>CONTENT MODERATION</small><strong>Listing Management</strong></div>}{page==="Admin bookings"&&<div className="dashboard-greeting admin-top-title"><small>PLATFORM OPERATIONS</small><strong>Booking Management</strong></div>}{page==="Admin payments"&&<div className="dashboard-greeting admin-top-title"><small>FINANCIAL OPERATIONS</small><strong>Payments & Reports</strong></div>}{page==="Admin analytics"&&<div className="dashboard-greeting admin-top-title"><small>BUSINESS INTELLIGENCE</small><strong>Analytics Dashboard</strong></div>}{page==="Admin logs"&&<div className="dashboard-greeting admin-top-title"><small>SECURITY & COMPLIANCE</small><strong>Activity Logs</strong></div>}{page==="Admin settings"&&<div className="dashboard-greeting admin-top-title"><small>PLATFORM CONFIGURATION</small><strong>System Settings</strong></div>}<span className={`workspace-label ${page==="Renter dashboard"||page==="Owner workspace"||role==="Admin"?"dashboard-hidden":""}`}><i />{role} workspace</span><div className={`global-search ${page==="Renter dashboard"||page==="Owner workspace"?"dashboard-hidden":""}`}><Icon name="search" /><input placeholder={role==="Admin"?"Search users, listings, bookings...":"Search homes, bookings, messages..."} /></div>{page==="Renter dashboard"&&<button className="icon-button header-search"><Icon name="search" /></button>}<div className="notification-wrap"><button className={`icon-button notification ${unreadNotificationCount?"has-unread":""}`} onClick={() => setNotificationsOpen(open => !open)} aria-label={`${unreadNotificationCount} unread notifications`}><Icon name="bell" />{unreadNotificationCount>0&&<b>{unreadNotificationCount>9?"9+":unreadNotificationCount}</b>}</button>{notificationsOpen && <div className="notifications-popover"><div className="notification-popover-head"><span><strong>Notifications</strong><small>{unreadNotificationCount} unread</small></span><button onClick={()=>setNotifications(items=>items.map(item=>({...item,read:true})))} disabled={!unreadNotificationCount}>Mark all as read</button></div><div className="notification-popover-list">{notifications.slice(0,4).map(item=><article className={item.read?"":"unread"} key={item.id} onClick={()=>setNotifications(items=>items.map(notification=>notification.id===item.id?{...notification,read:true}:notification))}><span className={`popover-notification-icon ${item.tone}`}><Icon name={item.icon}/></span><p><small>{item.category}</small><strong>{item.title}</strong><span>{item.message}</span><time>{item.time}</time></p></article>)}</div><button className="view-notifications" onClick={()=>{setPage(role==="Owner"?"Owner notifications":role==="Admin"?"Admin notifications":"Notifications");setNotificationsOpen(false);}}>View all notifications <Icon name="arrow" size={13}/></button></div>}</div><div className="session-menu-wrap"><button className="topbar-profile" onClick={()=>setSessionMenuOpen(!sessionMenuOpen)}><span className="avatar">{accountInitials}</span><span><strong>{accountName}</strong><small className={`role-badge ${role.toLowerCase()}`}>{role}</small></span><Icon name="chevron" size={15} /></button>{sessionMenuOpen&&<div className="session-menu"><div className="session-menu-user"><span className="avatar profile">{accountInitials}</span><p><strong>{accountName}</strong><small>{user?.email}</small></p></div><button onClick={()=>{setPage(role==="Renter"?"Renter dashboard":role==="Owner"?"Owner workspace":"Admin overview");setSessionMenuOpen(false);}}><Icon name="home" /> Dashboard</button><button onClick={()=>{setPage(role==="Owner"?"Owner profile":role==="Admin"?"Admin settings":"Settings");setSessionMenuOpen(false);}}><Icon name="settings" /> Account settings</button><button onClick={()=>{setPage(role==="Owner"?"Owner profile":role==="Admin"?"Admin settings":"Session expired");setSessionMenuOpen(false);}}><Icon name="lock" /> Session & security</button><button className="session-logout" onClick={()=>{setLogoutOpen(true);setSessionMenuOpen(false);}}><Icon name="logout" /> Logout</button></div>}</div></div><div className="content">{noticeState.error&&<p className="form-error-message" role="alert">{noticeState.error} <button onClick={noticeState.refresh}>Retry notifications</button></p>}{pages[page]}</div></main>
+    {logoutOpen&&<div className="modal-backdrop" role="presentation" onMouseDown={()=>setLogoutOpen(false)}><section className="modal logout-modal" role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><div className="modal-icon danger"><Icon name="logout" /></div><h2>Logout from RentNest?</h2><p className="modal-description">You will need to login again to access your account.</p><div className="logout-account"><span className="avatar profile">{accountInitials}</span><p><strong>{accountName}</strong><small className={`role-badge ${role.toLowerCase()}`}>{role}</small></p></div><div className="modal-actions"><Button variant="secondary" onClick={()=>setLogoutOpen(false)}>Cancel</Button><Button variant="destructive" onClick={()=>void logout().catch(error=>window.alert(error.message))}>Logout</Button></div></section></div>}
+  </div>;
 }

@@ -1,4 +1,4 @@
-﻿export function validDate(value: unknown): value is string
+export function validDate(value: unknown): value is string
 export function addMonths(start: string, months: number): string
 export function addDays(date: string, days: number): string
 export function overlaps(

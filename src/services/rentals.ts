@@ -24,7 +24,6 @@ export type BookingQuote = {
   currency: string
 }
 export type Booking = {
-  conversationId?: number | null
   id: number
   bookingCode: string
   propertyId: number

@@ -5,7 +5,7 @@ import pool from "../config/database.js"
 
 const router = Router()
 export const visibleProperties =
-  "p.moderation_status = 'approved' AND p.is_available = 1 AND p.deleted_at IS NULL AND EXISTS (SELECT 1 FROM users listing_owner WHERE listing_owner.id=p.owner_id AND listing_owner.role='owner' AND listing_owner.status='active' AND listing_owner.deleted_at IS NULL)"
+  "p.moderation_status = 'approved' AND p.is_available = 1 AND p.deleted_at IS NULL"
 const types = ["room", "studio", "flat", "apartment", "office", "parking"]
 const sorts = {
   newest: "p.created_at DESC, p.id DESC",
@@ -17,7 +17,7 @@ const sorts = {
 const columns = `p.id,p.owner_id AS ownerId, (SELECT name FROM users WHERE id=p.owner_id) AS ownerName,(SELECT avatar_url FROM users WHERE id=p.owner_id) AS ownerAvatarUrl, p.title, p.description, p.location, p.property_type AS propertyType,
   p.monthly_rent AS monthlyRent, p.currency, p.size_sqft AS sizeSqft, p.bedrooms, p.bathrooms,
   p.furnished, p.bachelor_allowed AS bachelorAllowed, p.family_allowed AS familyAllowed,
-  p.deposit_amount AS depositAmount, DATE_FORMAT(p.available_from,'%Y-%m-%d') AS availableFrom, p.created_at AS createdAt,
+  p.deposit_amount AS depositAmount, DATE_FORMAT(p.available_from,'%Y-%m-%d') AS availableFrom, p.rejection_reason AS rejectionReason, p.reviewed_at AS reviewedAt, p.created_at AS createdAt,
   (SELECT image_path FROM property_images WHERE property_id = p.id
    ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) AS primaryImage`
 
@@ -184,7 +184,6 @@ router.get("/", async (request, response, next) => {
       [...query.values, query.limit, (query.page - 1) * query.limit],
     )
     await connection.commit()
-
     response.set("Cache-Control", "no-store").json({
       success: true,
       data: {
@@ -250,14 +249,12 @@ router.get("/:id", async (request, response, next) => {
       "SELECT image_path AS url FROM property_images WHERE property_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC",
       [request.params.id],
     )
-    const [amenities] = await pool.execute("SELECT a.id,a.display_name AS name FROM property_amenities pa JOIN amenities a ON a.id=pa.amenity_id WHERE pa.property_id=? ORDER BY a.display_name",[request.params.id]);
     response.set("Cache-Control", "no-store").json({
       success: true,
       data: {
         property: {
           ...serializeProperty(rows[0]),
           images: images.map((image) => image.url),
-          amenities,
         },
       },
     })

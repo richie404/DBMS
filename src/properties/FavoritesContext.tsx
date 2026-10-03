@@ -39,7 +39,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [])
   const refresh = useCallback(
     async (quiet = false) => {
-      if (!user) {setFavorites([]);setError("");setLoading(false);return;}
+      if (!user) return
       const request = ++revision.current
       if (!quiet) {
         setLoading(true)
@@ -48,7 +48,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       try {
         const result = await propertyService.favorites()
         if (mounted.current && request === revision.current)
-          {setFavorites(result.properties);setError("");}
+          setFavorites(result.properties)
       } catch (error) {
         if (mounted.current && request === revision.current)
           setError(
@@ -87,7 +87,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     try {
       if (saved) await propertyService.unsave(property.id)
       else await propertyService.save(property.id)
-      window.dispatchEvent(new Event("rentnest:data-changed"))
       if (mounted.current)
         setFavorites((current) =>
           saved

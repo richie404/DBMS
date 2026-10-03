@@ -65,11 +65,9 @@ function validation(criteria: Criteria) {
   return ""
 }
 export default function Discovery({
-  initialFilter="",
   onView,
   onLogin,
 }: {
-  initialFilter?:string
   onView: (id: number) => void
   onLogin: () => void
 }) {
@@ -78,9 +76,8 @@ export default function Discovery({
   const [recent, setRecent] = useState<Criteria[]>(() =>
     readHistory(historyKey),
   )
-  const initial=()=>{try{const value=JSON.parse(initialFilter);return {...emptyCriteria,...Object.fromEntries(Object.entries(value).filter(([key,v])=>Object.hasOwnProperty.call(emptyCriteria,key)&&typeof v==="string"&&v.length<=255))} as Criteria;}catch{return {...emptyCriteria};}}
-  const [draft, setDraft] = useState<Criteria>(initial)
-  const [criteria, setCriteria] = useState<Criteria>(initial)
+  const [draft, setDraft] = useState<Criteria>({ ...emptyCriteria })
+  const [criteria, setCriteria] = useState<Criteria>({ ...emptyCriteria })
   const [result, setResult] = useState<ListingResult>({
     properties: [],
     total: 0,

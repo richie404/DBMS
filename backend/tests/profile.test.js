@@ -51,8 +51,7 @@ test("profile follows the database user through registration, login, restoration
     for(const id of ids) {
       await pool.execute("DELETE FROM sessions WHERE user_id = ?",[id]);
       await pool.execute("DELETE FROM user_preferences WHERE user_id = ?",[id]);
-      await pool.execute("DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE id = ?)", [id]);
-await pool.execute("DELETE FROM users WHERE id = ?",[id]);
+      await pool.execute("DELETE FROM users WHERE id = ?",[id]);
     }
     await pool.end();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
   }

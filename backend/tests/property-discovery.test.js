@@ -266,8 +266,7 @@ test("public discovery filters, sorts, paginates and enforces visibility; favori
     for (const id of users) {
       await pool.execute("DELETE FROM sessions WHERE user_id=?", [id])
       await pool.execute("DELETE FROM user_preferences WHERE user_id=?", [id])
-      await pool.execute("DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE id=?)", [id]);
-await pool.execute("DELETE FROM users WHERE id=?", [id])
+      await pool.execute("DELETE FROM users WHERE id=?", [id])
     }
     await pool.end()
     server.closeAllConnections()

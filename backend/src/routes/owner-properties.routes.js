@@ -1,203 +1,180 @@
-﻿import { Router } from "express"
+import { Router } from "express"
 import pool from "../config/database.js"
 import { requireAuth } from "../middleware/auth.js"
 import requireRole from "../middleware/require-role.js"
 import requireCsrf from "../middleware/csrf.js"
 import { columns, serializeProperty } from "./property.routes.js"
-import { propertyInput, id } from "../validators/rental.validator.js"
-import {
-  saveProperty,
-  archiveProperty,
-  propertyDetails,
-  moderateProperty,
-} from "../services/property.service.js"
-import { bookingFilter } from "../services/booking-filters.js"
-import { today } from "../services/rental.service.js"
-import { availability } from "../services/availability.service.js"
+import { validDate } from "../../../shared/rental-dates.js"
 const router = Router()
-const run = (fn) => async (req, res, next) => {
-  try {
-    res
-      .set("Cache-Control", "no-store")
-      .json({ success: true, data: await fn(req) })
-  } catch (e) {
-    if (e.status && e.status < 500)
-      res.status(e.status).json({ success: false, message: e.message })
-    else next(e)
-  }
-}
-router.get(
-  "/admin/properties",
-  requireAuth,
-  requireRole("admin"),
-  run(async () => {
-    const [rows] = await pool.execute(
-      `SELECT ${columns},p.moderation_status AS moderationStatus,p.is_available AS isAvailable FROM properties p WHERE p.deleted_at IS NULL ORDER BY p.updated_at DESC,p.id DESC`,
-    )
-    return { properties: rows.map(serializeProperty) }
-  }),
-)
-router.get("/admin/properties/:id",requireAuth,requireRole("admin"),run(async req=>({property:await propertyDetails(id(req.params.id),"admin",req.user.id)})));
-router.get("/admin/properties/:id/availability",requireAuth,requireRole("admin"),run(async req=>({availability:await availability(pool,await propertyDetails(id(req.params.id),"admin",req.user.id),Number(req.query.months||1),req.query.from||today())})));
-router.patch("/admin/properties/:id/moderation",requireAuth,requireRole("admin"),requireCsrf,run(async req=>({property:await moderateProperty(req.user.id,id(req.params.id),req.body)})));
-router.use("/owner", requireAuth, requireRole("owner"))
-router.get(
-  "/owner/properties",
-  run(async (req) => {
-    const [rows] = await pool.execute(
-      `SELECT ${columns},p.moderation_status AS moderationStatus,p.is_available AS isAvailable,p.rejection_reason AS rejectionReason,EXISTS(SELECT 1 FROM bookings b WHERE b.property_id=p.id AND b.deleted_at IS NULL AND b.status IN ('approved','confirmed') AND b.start_date<=? AND b.end_date>?) AS occupiedToday FROM properties p WHERE p.owner_id=? AND p.deleted_at IS NULL ORDER BY p.updated_at DESC,p.id DESC`,
-      [today(), today(), req.user.id],
-    )
-    return { properties: rows.map(serializeProperty) }
-  }),
-)
-router.get(
-  "/owner/properties/:id/availability",
-  run(async (req) => {
-    const property = await propertyDetails(
-      id(req.params.id),
-      "owner",
-      req.user.id,
-    )
-    return {
-      availability: await availability(
-        pool,
-        property,
-        Number(req.query.months || 1),
-        req.query.from || today(),
-      ),
-    }
-  }),
-)
-router.get(
-  "/owner/properties/:id",
-  run(async (req) => ({
-    property: await propertyDetails(id(req.params.id), "owner", req.user.id),
-  })),
-)
 router.post(
   "/owner/properties",
+  requireAuth,
+  requireRole("owner"),
   requireCsrf,
-  run(async (req) => ({
-    property: await saveProperty(
-      req.user.id,
-      null,
-      propertyInput(req.body, true),
-    ),
-  })),
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {}
+      const types = ["room", "studio", "flat", "apartment", "office", "parking"]
+      const title = typeof body.title === "string" ? body.title.trim() : ""
+      const location = typeof body.location === "string" ? body.location.trim() : ""
+      const type = body.type
+      const monthlyRent = Number(body.monthlyRent)
+      const depositAmount = Number(body.depositAmount ?? 0)
+      if (!title || title.length > 200 || !location || location.length > 255 || !types.includes(type) || !Number.isFinite(monthlyRent) || monthlyRent <= 0 || !Number.isFinite(depositAmount) || depositAmount < 0)
+        return res.status(400).json({ success: false, message: "Enter a title, location, property type, positive monthly rent, and valid deposit." })
+      const [result] = await pool.execute(
+        "INSERT INTO properties (owner_id,title,location,property_type,monthly_rent,deposit_amount,moderation_status,is_available) VALUES (?,?,?,?,?,?, 'pending', TRUE)",
+        [req.user.id, title, location, type, monthlyRent, depositAmount],
+      )
+      res.status(201).json({ success: true, data: { propertyId: result.insertId } })
+    } catch (error) {
+      next(error)
+    }
+  },
+)
+router.get(
+  ["/owner/properties", "/admin/properties"],
+  requireAuth,
+  requireRole("owner", "admin"),
+  async (req, res, next) => {
+    try {
+      if (req.path.startsWith("/admin") && req.user.role !== "admin")
+        return res
+          .status(403)
+          .json({ success: false, message: "Admin access required" })
+      const own = req.path.startsWith("/owner")
+      const [rows] = await pool.execute(
+        `SELECT ${columns},p.owner_id AS ownerId,p.moderation_status AS moderationStatus,p.is_available AS isAvailable FROM properties p WHERE p.deleted_at IS NULL ${
+          own ? "AND p.owner_id=?" : ""
+        } ORDER BY p.updated_at DESC,p.id DESC`,
+        own ? [req.user.id] : [],
+      )
+      res.set("Cache-Control", "no-store").json({
+        success: true,
+        data: { properties: rows.map(serializeProperty) },
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
 )
 router.patch(
   "/owner/properties/:id",
+  requireAuth,
+  requireRole("owner"),
   requireCsrf,
-  run(async (req) => {
-    const body = { ...req.body }
-    if (Object.hasOwn(body, "isAvailable")) {
-      body.available = body.isAvailable
-      delete body.isAvailable
+  async (req, res, next) => {
+    try {
+      const body = req.body ?? {},
+        keys = Object.keys(body)
+      const fields = {
+        title: "title",
+        description: "description",
+        location: "location",
+        monthlyRent: "monthly_rent",
+        depositAmount: "deposit_amount",
+        availableFrom: "available_from",
+        isAvailable: "is_available",
+      }
+      const resubmitting = body.resubmitForReview === true
+      if (
+        !keys.length ||
+        keys.some(
+          (key) => !Object.hasOwn(fields, key) && key !== "resubmitForReview",
+        )
+      )
+        return res.status(400).json({
+          success: false,
+          message:
+            "Only listing details and availability can be edited; ownership cannot be changed",
+        })
+      for (const key of keys.filter((key) => key !== "resubmitForReview")) {
+        const value = body[key]
+        if (
+          ["monthlyRent", "depositAmount"].includes(key) &&
+          (!Number.isFinite(value) || value < 0 || value > 9999999999.99)
+        )
+          return res.status(400).json({
+            success: false,
+            message: "Enter valid non-negative amounts",
+          })
+        if (key === "availableFrom" && value !== null && !validDate(value))
+          return res.status(400).json({
+            success: false,
+            message: "Enter a valid earliest available date",
+          })
+        if (key === "isAvailable" && typeof value !== "boolean")
+          return res.status(400).json({
+            success: false,
+            message: "Availability must be true or false",
+          })
+        if (
+          ["title", "description", "location"].includes(key) &&
+          (typeof value !== "string" ||
+            value.length >
+              (key === "title" ? 200 : key === "location" ? 255 : 10000))
+        )
+          return res
+            .status(400)
+            .json({ success: false, message: "Invalid listing text" })
+      }
+      const connection = await pool.getConnection()
+      try {
+        await connection.beginTransaction()
+        const [[owned]] = await connection.execute(
+          "SELECT id,moderation_status AS moderationStatus FROM properties WHERE id=? AND owner_id=? AND deleted_at IS NULL FOR UPDATE",
+          [req.params.id, req.user.id],
+        )
+        if (!owned) {
+          await connection.rollback()
+          return res
+            .status(404)
+            .json({ success: false, message: "Listing not found" })
+        }
+        if (resubmitting && !["draft", "rejected"].includes(owned.moderationStatus)) {
+          await connection.rollback()
+          return res.status(409).json({ success: false, message: "Only draft or rejected listings can be submitted for review" })
+        }
+        const updateKeys = keys.filter((key) => key !== "resubmitForReview")
+        const updates = updateKeys.map((key) => `${fields[key]}=?`)
+        const values = updateKeys.map((key) => body[key])
+        if (resubmitting) {
+          updates.push("moderation_status='pending'", "rejection_reason=NULL", "reviewed_by=NULL", "reviewed_at=NULL")
+        }
+        await connection.execute(
+          `UPDATE properties SET ${updates.join(",")} WHERE id=? AND owner_id=?`,
+          [...values, owned.id, req.user.id],
+        )
+        await connection.commit()
+        res.json({ success: true, data: {} })
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      } finally {
+        connection.release()
+      }
+    } catch (error) {
+      next(error)
     }
-    return {
-      property: await saveProperty(
-        req.user.id,
-        id(req.params.id),
-        propertyInput(body),
-      ),
-    }
-  }),
+  },
 )
 router.delete(
   "/owner/properties/:id",
+  requireAuth,
+  requireRole("owner"),
   requireCsrf,
-  run(async (req) => {
-    await archiveProperty(req.user.id, id(req.params.id))
-    return {}
-  }),
-)
-router.get(
-  "/owner/summary",
-  run(async (req) => {
-    const active = bookingFilter("active", today()),
-      pending = bookingFilter("pending", today())
-    const [[counts]] = await pool.execute(
-      `SELECT
-(SELECT COUNT(*) FROM properties WHERE owner_id=? AND deleted_at IS NULL) AS totalProperties,
-(SELECT COUNT(*) FROM properties p WHERE owner_id=? AND deleted_at IS NULL AND moderation_status='approved' AND is_available=1) AS availableProperties,
-(SELECT COUNT(*) FROM bookings b JOIN properties p ON p.id=b.property_id WHERE p.owner_id=? AND b.deleted_at IS NULL AND ${pending.sql}) AS pendingRequests,
-(SELECT COUNT(*) FROM bookings b JOIN properties p ON p.id=b.property_id WHERE p.owner_id=? AND b.deleted_at IS NULL AND ${active.sql}) AS activeBookings,
-(SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.owner_id=? AND m.sender_id<>? AND m.read_at IS NULL) AS unreadMessages`,
-      [
-        req.user.id,
-        req.user.id,
-        req.user.id,
-        ...pending.values,
-        req.user.id,
-        ...active.values,
-        req.user.id,
-        req.user.id,
-      ],
-    )
-    const [payments] = await pool.execute(
-      "SELECT currency,SUM(amount) AS amount FROM payments WHERE payee_id=? AND record_type='payout' AND status='completed' GROUP BY currency",
-      [req.user.id],
-    )
-    return { counts, payments }
-  }),
-)
-router.get(
-  "/owner/payments",
-  run(async (req) => {
-    const [items] = await pool.execute(
-      `SELECT x.id,x.reference_code AS reference,x.record_type AS recordType,x.amount,x.currency,x.status,x.transaction_at AS transactionAt,x.booking_id AS bookingId,p.title FROM payments x LEFT JOIN bookings b ON b.id=x.booking_id LEFT JOIN properties p ON p.id=b.property_id WHERE x.payee_id=? ORDER BY x.created_at DESC,x.id DESC`,
-      [req.user.id],
-    )
-    return { items }
-  }),
-)
-router.get(
-  "/owner/amenities",
-  run(async () => {
-    const [items] = await pool.execute(
-      "SELECT id,display_name AS name FROM amenities ORDER BY display_name",
-    )
-    return { items }
-  }),
-)
-router.get(
-  "/owner/preferences",
-  run(async (req) => {
-    const [[preferences]] = await pool.execute(
-      "SELECT booking_notifications,message_notifications,favorite_notifications,marketing_notifications FROM user_preferences WHERE user_id=?",
-      [req.user.id],
-    )
-    return { preferences }
-  }),
-)
-router.patch(
-  "/owner/preferences",
-  requireCsrf,
-  run(async (req) => {
-    const keys = Object.keys(req.body || {})
-    if (
-      !keys.length ||
-      keys.some(
-        (k) =>
-          ![
-            "booking_notifications",
-            "message_notifications",
-            "favorite_notifications",
-            "marketing_notifications",
-          ].includes(k),
-      ) ||
-      Object.values(req.body).some((v) => typeof v !== "boolean")
-    ) {
-      const e = new Error("Invalid notification preferences")
-      e.status = 400
-      throw e
-    }
-    await pool.execute(
-      `UPDATE user_preferences SET ${keys.map((k) => k + "=?").join(",")} WHERE user_id=?`,
-      [...Object.values(req.body), req.user.id],
-    )
-    return {}
-  }),
+  async (req, res, next) => {
+    const connection = await pool.getConnection()
+    try {
+      await connection.beginTransaction()
+      const [[property]] = await connection.execute("SELECT id FROM properties WHERE id=? AND owner_id=? AND deleted_at IS NULL FOR UPDATE", [req.params.id, req.user.id])
+      if (!property) { await connection.rollback(); return res.status(404).json({ success: false, message: "Listing not found" }) }
+      const [[active]] = await connection.execute("SELECT COUNT(*) AS count FROM bookings WHERE property_id=? AND status IN ('pending','approved','confirmed') AND deleted_at IS NULL", [property.id])
+      if (active.count) { await connection.rollback(); return res.status(409).json({ success: false, message: "Resolve active booking requests before archiving this listing." }) }
+      await connection.execute("UPDATE properties SET deleted_at=NOW(), is_available=FALSE WHERE id=?", [property.id])
+      await connection.commit()
+      res.json({ success: true, data: {} })
+    } catch (error) { await connection.rollback(); next(error) } finally { connection.release() }
+  },
 )
 export default router

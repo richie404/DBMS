@@ -3,7 +3,6 @@ export function validDate(value) {
   return (
     typeof value === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-    Number(value.slice(0, 4)) >= 1000 &&
     Number.isFinite(Date.parse(value)) &&
     new Date(value).toISOString().slice(0, 10) === value
   )

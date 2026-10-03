@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "../auth/AuthContext"
 import { useFavorites } from "./FavoritesContext"
 import type { Property } from "../services/properties"

@@ -1,17 +1,10 @@
-import AvailabilitySummary from "./AvailabilitySummary"
-
+import AvailabilityCalendar from "./AvailabilityCalendar"
 import { formatDate } from "../../shared/rental-dates.js"
-
 import { useEffect, useRef, useState } from "react"
-
 import { useAuth } from "../auth/AuthContext"
-
 import { rentalService } from "../services/rentals"
-
 import BookingForm from "./BookingForm"
-
 import { propertyService, type Property } from "../services/properties"
-
 import {
   ListingSkeletons,
   PropertyBadges,
@@ -23,28 +16,18 @@ import {
 
 interface OwnerAvatarProps {
   name: string
-
   url: string | null
 }
-
 function OwnerAvatar({ name, url }: OwnerAvatarProps) {
   const [failed, setFailed] = useState(false)
-
   const initials =
     name
-
       .trim()
-
       .split(/\s+/)
-
       .slice(0, 2)
-
       .map((part) => part[0])
-
       .join("")
-
       .toUpperCase() || "?"
-
   return (
     <span className="listed-by-avatar">
       {url && !failed ? (
@@ -58,65 +41,41 @@ function OwnerAvatar({ name, url }: OwnerAvatarProps) {
 
 export default function PropertyDetails({
   id,
-
   onBack,
-
   onLogin,
-
   onChat,
-
   onBookings,
 }: {
   id: number
-
   onBack: () => void
-
   onLogin: (action?: string) => void
-
   onChat: (conversationId: number) => void
-
   onBookings: () => void
 }) {
   const { user } = useAuth()
-
   const [bookingOpen, setBookingOpen] = useState(false)
-
   const [proposedStart, setProposedStart] = useState("")
-
   const [proposedMonths, setProposedMonths] = useState(1)
-
   const [chatBusy, setChatBusy] = useState(false)
-
   const [actionError, setActionError] = useState("")
-
   const allowed = !user || user.role === "renter"
-
   const mounted = useRef(true)
-
   useEffect(() => {
     mounted.current = true
-
     return () => {
       mounted.current = false
     }
   }, [])
-
   const chat = async () => {
     if (!user) {
       onLogin("chat")
-
       return
     }
-
     if (!allowed || chatBusy) return
-
     setChatBusy(true)
-
     setActionError("")
-
     try {
       const result = await rentalService.startConversation(id)
-
       if (mounted.current) onChat(result.conversationId)
     } catch (error) {
       if (mounted.current)
@@ -129,50 +88,37 @@ export default function PropertyDetails({
       if (mounted.current) setChatBusy(false)
     }
   }
-
   const requestBooking = () => {
+    if (!user) {
+      onLogin("booking")
+      return
+    }
     if (allowed) setBookingOpen(true)
   }
-
   const [property, setProperty] = useState<Property | null>(null)
-
   const [loading, setLoading] = useState(true)
-
   const [error, setError] = useState("")
-
   const [retry, setRetry] = useState(0)
-
   useEffect(() => {
     const controller = new AbortController()
-
     setLoading(true)
-
     setError("")
-
     setProperty(null)
-
     propertyService
-
-      .detail(id, controller.signal, user?.role === "admin"?"admin":user?.role === "owner")
-
+      .detail(id, controller.signal)
       .then((response) => {
         if (!controller.signal.aborted) setProperty(response.property)
       })
-
       .catch((error) => {
         if (!controller.signal.aborted) setError(error.message)
       })
-
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
-
     return () => controller.abort()
-  }, [id, retry, user?.role])
-
+  }, [id, retry])
   return (
     <div className="database-property-details">
-      {property?.privatePreview && <p role="note">Private authorised preview · this listing is not available in public browsing.</p>}
       <button className="button button-ghost" onClick={onBack}>
         ← Back to properties
       </button>
@@ -232,7 +178,6 @@ export default function PropertyDetails({
                     {property.description || "No description provided."}
                   </p>
                   <PropertyFacts property={property} />
-                  {Boolean(property.amenities?.length)&&<><h3>Amenities</h3><div className="property-badges">{property.amenities?.map(a=><span className="badge" key={a.id}>{a.name}</span>)}</div></>}
                   <PropertyBadges property={property} />
                   {property.owner && (
                     <div className="listed-by-card">
@@ -254,10 +199,24 @@ export default function PropertyDetails({
                     </div>
                   )}
                 </section>
-                <AvailabilitySummary ownerMode={Boolean(property.privatePreview)}
+                <label className="calendar-duration-label">
+                  Rental duration to check (whole months)
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    step="1"
+                    value={proposedMonths || ""}
+                    onChange={(event) =>
+                      setProposedMonths(Number(event.target.value))
+                    }
+                  />
+                </label>
+                <AvailabilityCalendar
                   propertyId={property.id}
                   months={proposedMonths}
-                  onCheck={() => setBookingOpen(true)}
+                  start={proposedStart}
+                  onSelect={allowed ? setProposedStart : undefined}
                 />
               </section>
               <aside className="booking-card">
@@ -336,12 +295,10 @@ export default function PropertyDetails({
                 initialMonths={proposedMonths}
                 onPeriodChange={(start, months) => {
                   setProposedStart(start)
-
                   setProposedMonths(months)
                 }}
                 onClose={() => setBookingOpen(false)}
                 onBookings={onBookings}
-                onLogin={() => onLogin("booking")}
               />
             )}
           </>

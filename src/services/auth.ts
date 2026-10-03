@@ -4,7 +4,7 @@ import type { AuthUser, ChangePasswordInput, ForgotPasswordInput, LoginInput, Re
 type UserResponse = { user: AuthUser };
 
 export const authService = {
-  async updateProfile(input: Pick<AuthUser, "name" | "username" | "email" | "phone"> & {avatarUrl?:string}) {
+  async updateProfile(input: Pick<AuthUser, "name" | "username" | "email" | "phone">) {
     return (await apiRequest<UserResponse>("/auth/profile", { method: "PATCH", body: input, csrf: true })).user;
   },
   async register(input: RegisterInput) {

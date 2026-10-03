@@ -1,4 +1,4 @@
-﻿import { Router } from "express"
+import { Router } from "express"
 import pool from "../config/database.js"
 import { requireAuth } from "../middleware/auth.js"
 import requireCsrf from "../middleware/csrf.js"

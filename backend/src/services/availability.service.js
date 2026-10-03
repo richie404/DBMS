@@ -1,4 +1,4 @@
-﻿import { today, fail } from "./rental.service.js"
+import { today, fail } from "./rental.service.js"
 import { addMonths, overlaps } from "../../../shared/rental-dates.js"
 // No temporary holds exist. Approved and confirmed bookings reserve [start,end).
 export const reservationSQL =

@@ -1,4 +1,3 @@
-import {useAuth} from "../auth/AuthContext"
 import { useEffect, useState } from "react"
 import "./availability.css"
 import { apiRequest } from "../lib/api"
@@ -15,7 +14,6 @@ interface Availability {
   occupiedToday: boolean
 }
 interface Props {
-  ownerMode?: boolean
   propertyId: number
   months?: number
   start?: string
@@ -30,15 +28,12 @@ const today = () =>
     day: "2-digit",
   }).format(new Date())
 export default function AvailabilityCalendar({
-  ownerMode = false,
   propertyId,
   months = 1,
   start = "",
   onSelect,
   refreshToken = 0,
 }: Props) {
-  const {user}=useAuth()
-  const privatePrefix=user?.role==="admin"?"admin/":"owner/"
   const [data, setData] = useState<Availability | null>(null),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0),
@@ -56,7 +51,7 @@ export default function AvailabilityCalendar({
       fetching = true
       try {
         const result = await apiRequest<{ availability: Availability }>(
-          `/${ownerMode ? privatePrefix : ""}properties/${propertyId}/availability?${new URLSearchParams({ months: String(months), from: start || today() })}`,
+          `/properties/${propertyId}/availability?${new URLSearchParams({ months: String(months), from: start || today() })}`,
           { signal: controller.signal },
         )
         if (!controller.signal.aborted) {
@@ -85,7 +80,7 @@ export default function AvailabilityCalendar({
       window.removeEventListener("rentnest:data-changed", update)
       window.removeEventListener("focus", update)
     }
-  }, [propertyId, months, start, retry, refreshToken, ownerMode, privatePrefix])
+  }, [propertyId, months, start, retry, refreshToken])
   const changeMonth = (offset: number) => {
     const date = new Date(month + "-01T00:00:00Z")
     date.setUTCMonth(date.getUTCMonth() + offset)

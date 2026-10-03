@@ -26,6 +26,9 @@ export function validateRegistrationInput(body) {
   const confirmPassword = input.confirmPassword;
   const role = input.role;
 
+  if (name && name.length > 150) errors.name = "Name must be at most 150 characters";
+  if (rawEmail && rawEmail.length > 254) errors.email = "Email must be at most 254 characters";
+
   if (username && !usernamePattern.test(username)) {
     errors.username = "Username must use 3-50 letters, numbers, or underscores";
   }

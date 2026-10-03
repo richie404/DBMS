@@ -535,8 +535,7 @@ test("two owners receive only their bookings and conversations; concurrent reque
       await pool.execute("DELETE FROM user_preferences WHERE user_id=?", [
         userId,
       ])
-      await pool.execute("DELETE FROM activity_logs WHERE actor_id IN (SELECT id FROM users WHERE id=?)", [userId]);
-await pool.execute("DELETE FROM users WHERE id=?", [userId])
+      await pool.execute("DELETE FROM users WHERE id=?", [userId])
     }
     await pool.end()
     server.closeAllConnections()

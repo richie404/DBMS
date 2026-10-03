@@ -1,4 +1,5 @@
 {
+  "title": "RentNest",
   "description": "Manage rental properties seamlessly with role-specific dashboards for renters, owners, and admins featuring listings, bookings, messaging, and analytics.",
   "robots": {
     "index": false

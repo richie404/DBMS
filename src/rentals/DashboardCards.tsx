@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react"
+import type { ReactNode } from "react"
 import type { useDashboardSummary } from "./useDashboardSummary"
 interface Props {
   icons: ReactNode[]

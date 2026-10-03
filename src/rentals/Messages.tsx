@@ -186,7 +186,6 @@ export default function Messages({
       readPending.current = true
       try {
         await rentalService.readMessages(selectedId, displayed.slice(-1000))
-        window.dispatchEvent(new Event("rentnest:data-changed"))
         if (!controller.signal.aborted) {
           setMessages((current) =>
             current.map((message) =>
@@ -262,7 +261,6 @@ export default function Messages({
     setThreadError("")
     try {
       const result = await rentalService.send(target, content)
-      window.dispatchEvent(new Event("rentnest:data-changed"))
       if (mounted.current && currentId.current === target) {
         setMessages((current) => merge(current, [result.message]))
         setText("")

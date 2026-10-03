@@ -1,14 +1,17 @@
-import {apiRequest} from "../lib/api";
-import type {Amenity, Page, Property as LegacyProperty, PropertyInput, Query} from "../types/rentals";
+export interface PropertyOwner {
+  id: number
+  name: string
+  avatarUrl: string | null
+}
+import { apiRequest } from "../lib/api"
 
-export interface PropertyOwner {id:number;name:string;avatarUrl:string|null}
-export function queryString(filters: Query = {}) {const params=new URLSearchParams();for(const [key,value]of Object.entries(filters))if(value!==undefined&&value!=="")params.set(key,String(value));return params.size?`?${params}`:"";}
 export interface Property {
-  privatePreview?: boolean
   ownerName?: string
   ownerId?: number
   moderationStatus?: string
   isAvailable?: boolean
+  rejectionReason?: string | null
+  reviewedAt?: string | null
   owner?: PropertyOwner
   id: number
   title: string | null
@@ -27,7 +30,6 @@ export interface Property {
   depositAmount: number | null
   availableFrom: string | null
   createdAt: string
-  amenities?: {id:number;name:string}[]
   images?: string[]
 }
 export const propertyTypes = [
@@ -78,8 +80,6 @@ export interface PropertyLocation {
   location: string
   count: number
 }
-export type PropertyScope = "public" | "owner" | "admin";
-const base = (scope: PropertyScope) => scope === "public" ? "/properties" : `/${scope}/properties`;
 export const propertyService = {
   list(criteria: Criteria, page = 1, signal?: AbortSignal) {
     const query = new URLSearchParams({ page: String(page), limit: "12" })
@@ -88,13 +88,8 @@ export const propertyService = {
     })
     return apiRequest<ListingResult>(`/properties?${query}`, { signal })
   },
-  async detail(id: number, signal?: AbortSignal, ownerPreview: boolean | "admin" = false) {
-    try { return await apiRequest<{ property: Property }>(`/properties/${id}`, { signal }) }
-    catch(error) {
-      if(!ownerPreview || !(error instanceof Error) || !('status' in error) || error.status !== 404) throw error;
-      const {property:p}=await apiRequest<{property:Omit<Property,"images"> & {type:string;available:boolean;images:{url:string}[];owner:PropertyOwner}}>(`/${ownerPreview==="admin"?"admin":"owner"}/properties/${id}`,{signal});
-      return {property:{...p,privatePreview:true,propertyType:p.type,isAvailable:p.available,ownerId:p.owner.id,ownerName:p.owner.name,primaryImage:p.images[0]?.url||null,images:p.images.map(i=>i.url)} as Property};
-    }
+  detail(id: number, signal?: AbortSignal) {
+    return apiRequest<{ property: Property }>(`/properties/${id}`, { signal })
   },
   locations(signal?: AbortSignal) {
     return apiRequest<{ locations: PropertyLocation[] }>(

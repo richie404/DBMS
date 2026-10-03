@@ -13,19 +13,13 @@ export function fail(status, message) {
 export async function transaction(callback) {
   const connection = await pool.getConnection()
   try {
-    // Every callback contains database writes only. A deadlock rolls back the
-    // complete transaction, so retrying also rechecks ownership and availability.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        await connection.beginTransaction()
-        const result = await callback(connection)
-        await connection.commit()
-        return result
-      } catch (error) {
-        await connection.rollback()
-        if (error.code !== "ER_LOCK_DEADLOCK" || attempt === 2) throw error
-      }
-    }
+    await connection.beginTransaction()
+    const result = await callback(connection)
+    await connection.commit()
+    return result
+  } catch (error) {
+    await connection.rollback()
+    throw error
   } finally {
     connection.release()
   }

@@ -10,13 +10,9 @@ interface Props {
   mode?: "public" | "owner" | "admin"
   onView: (id: number) => void
   onLogin: () => void
-  filter?: string
-  onFilter?: (filter:string)=>void
   compact?: boolean
 }
 export default function ListingCollection({
-  filter = "",
-  onFilter,
   mode = "public",
   onView,
   onLogin,
@@ -51,8 +47,6 @@ export default function ListingCollection({
       })
     return () => controller.abort()
   }, [mode, retry])
-  const [review,setReview]=useState<{id:number;status:string}|null>(null)
-  const [reason,setReason]=useState("")
   const save = async () => {
     if (!edit || busy) return
     setBusy(true)
@@ -79,11 +73,23 @@ export default function ListingCollection({
       setBusy(false)
     }
   }
-  const visible=mode==="admin"&&filter?properties.filter(p=>p.moderationStatus===filter):properties
-  const [page,setPage]=useState(1)
-  const pages=Math.max(1,Math.ceil(visible.length/12)),current=Math.min(page,pages)
-  useEffect(()=>setPage(1),[filter])
-  useEffect(()=>{const refresh=()=>setRetry(n=>n+1);window.addEventListener("rentnest:data-changed",refresh);return()=>window.removeEventListener("rentnest:data-changed",refresh)},[])
+  const resubmit = async (property: Property) => {
+    if (busy) return
+    setBusy(true)
+    setError("")
+    try {
+      await apiRequest(`/owner/properties/${property.id}`, {
+        method: "PATCH",
+        csrf: true,
+        body: { resubmitForReview: true },
+      })
+      setRetry((n) => n + 1)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to submit listing for review")
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
     <section className="listing-collection">
       {mode !== "public" && (
@@ -93,13 +99,12 @@ export default function ListingCollection({
               {mode === "owner" ? "Your Properties" : "Listing Management"}
             </h1>
             <p>
-              {error?"Unavailable":loading?"Loading…":visible.length} database listings. Occupancy is managed by
+              {properties.length} database listings. Occupancy is managed by
               reservations, separately from publication.
             </p>
           </div>
         </div>
       )}
-      {mode==="admin"&&<div className="db-filters"><select aria-label="Listing moderation status" value={filter} onChange={e=>onFilter?.(e.target.value)}><option value="">All statuses</option>{["draft","pending","approved","rejected"].map(v=><option key={v}>{v}</option>)}</select><button className="button button-secondary" onClick={()=>setRetry(n=>n+1)}>Refresh Data</button></div>}
       {error ? (
         <div role="alert" className="listing-state">
           <p>{error}</p>
@@ -114,10 +119,10 @@ export default function ListingCollection({
         <div className="database-property-grid">
           <ListingSkeletons />
         </div>
-      ) : visible.length ? (
+      ) : properties.length ? (
         <div className="database-property-grid">
-          {visible
-            .slice(mode==="admin"?(current-1)*12:0, mode === "public" ? 6 : compact ? 3 : mode==="admin"?current*12:visible.length)
+          {properties
+            .slice(0, mode === "public" ? 6 : compact ? 3 : properties.length)
             .map((property) => (
               <div key={property.id}>
                 <PropertyCard
@@ -133,17 +138,23 @@ export default function ListingCollection({
                         ? "Accepting future requests"
                         : "Withdrawn by owner"}
                     </p>
-                    {mode === "admin" && property.moderationStatus === "pending" && <><button className="button button-primary" onClick={()=>{setReview({id:property.id,status:"approved"});setEditError("")}}>Approve listing</button><button className="button button-secondary" onClick={()=>{setReview({id:property.id,status:"rejected"});setReason("");setEditError("")}}>Reject listing</button></>}
                     {mode === "owner" && (
-                      <button
-                        className="button button-secondary"
-                        onClick={() => {
-                          setEdit(property)
-                          setEditError("")
-                        }}
-                      >
-                        Edit listing availability
-                      </button>
+                      <>
+                        <button
+                          className="button button-secondary"
+                          onClick={() => {
+                            setEdit(property)
+                            setEditError("")
+                          }}
+                        >
+                          Edit listing availability
+                        </button>
+                        {["draft", "rejected"].includes(property.moderationStatus ?? "") && (
+                          <button className="button button-primary" disabled={busy} onClick={() => void resubmit(property)}>
+                            {busy ? "Submitting…" : "Submit for admin review"}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -156,8 +167,6 @@ export default function ListingCollection({
           <p>Database listings will appear here.</p>
         </div>
       )}
-      {mode==="admin"&&!loading&&!error&&<div className="db-pagination"><button disabled={current===1} onClick={()=>setPage(current-1)}>Previous</button><span>Page {current} of {pages} · {visible.length} listings</span><button disabled={current===pages} onClick={()=>setPage(current+1)}>Next</button></div>}
-      {review && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="listing-review-title"><h2 id="listing-review-title">{review.status==="approved"?"Approve":"Reject"} listing #{review.id}?</h2>{review.status==="rejected"&&<label>Rejection reason<textarea required maxLength={2000} value={reason} onChange={e=>setReason(e.target.value)}/></label>}{editError&&<p role="alert">{editError}</p>}<div className="modal-actions"><button className="button button-secondary" autoFocus disabled={busy} onClick={()=>setReview(null)}>Back</button><button className="button button-primary" disabled={busy||(review.status==="rejected"&&!reason.trim())} onClick={async()=>{setBusy(true);try{await apiRequest(`/admin/properties/${review.id}/moderation`,{method:"PATCH",csrf:true,body:{status:review.status,reason}});setReview(null);setRetry(n=>n+1);window.dispatchEvent(new Event("rentnest:data-changed"))}catch(e){setEditError(e instanceof Error?e.message:"Unable to review listing")}finally{setBusy(false)}}}>Confirm</button></div></section></div>}
       {edit && (
         <div className="modal-backdrop">
           <section

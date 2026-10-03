@@ -23,7 +23,8 @@ export default function FavoritesPage({
           <p className="eyebrow">YOUR SHORTLIST</p>
           <h2>{compact ? "Saved Properties" : "Favorites"}</h2>
           <p>
-            {loading?"Loading count…":error?"Count unavailable":`${favorites.length} saved ${favorites.length===1?"property":"properties"}`}
+            {favorites.length} saved{" "}
+            {favorites.length === 1 ? "property" : "properties"}
           </p>
         </div>
         <button className="button button-secondary" onClick={onBrowse}>

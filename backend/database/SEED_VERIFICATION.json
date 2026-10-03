@@ -1,6 +1,6 @@
 {
-  "database": "rentnest",
-  "verifiedAt": "2026-10-02T00:32:01.968Z",
+  "database": "rentnest_import",
+  "verifiedAt": "2026-10-02T22:41:56.001Z",
   "counts": {
     "properties": 36,
     "property_images": 108,
@@ -18,7 +18,7 @@
   "usersByRole": [
     {
       "role": "renter",
-      "count": 15
+      "count": 16
     },
     {
       "role": "owner",

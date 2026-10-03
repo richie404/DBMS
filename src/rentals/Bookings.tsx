@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react"
-import {apiRequest} from "../lib/api"
+import { useEffect, useState } from "react"
 import { useAuth } from "../auth/AuthContext"
 import { rentalService, type Booking } from "../services/rentals"
 
@@ -8,13 +7,11 @@ export default function Bookings({
   onFilter,
   onProperty,
   onChat,
-  onConversation,
 }: {
   filter: string
   onFilter: (filter: string) => void
   onProperty: (id: number) => void
   onChat: (id: number) => void
-  onConversation?: (id: number) => void
 }) {
   const { user } = useAuth()
   const owner = user?.role === "owner"
@@ -33,11 +30,6 @@ export default function Bookings({
   } | null>(null)
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
-  const [chatBusy,setChatBusy]=useState<number|null>(null)
-  const [chatError,setChatError]=useState("")
-  const chatMounted=useRef(true)
-  useEffect(()=>{chatMounted.current=true;return()=>{chatMounted.current=false}},[])
-  const openChat=async(booking:Booking)=>{if(chatBusy)return;setChatBusy(booking.id);setChatError("");try{const result=await apiRequest<{conversationId:number}>(`/bookings/${booking.id}/conversation`,{method:"POST",csrf:true});if(chatMounted.current)onConversation?.(result.conversationId)}catch(e){if(chatMounted.current)setChatError(e instanceof Error?e.message:"Unable to open conversation")}finally{if(chatMounted.current)setChatBusy(null)}}
   useEffect(() => {
     setLoading(true)
     const controller = new AbortController()
@@ -69,7 +61,6 @@ export default function Bookings({
       window.clearInterval(timer)
     }
   }, [retry, status])
-  useEffect(()=>{if(!confirmation)return;const previous=document.activeElement as HTMLElement|null;const dialog=document.querySelector<HTMLElement>('[role="dialog"]');const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!busy)setConfirmation(null);if(e.key==='Tab'&&dialog){const controls=[...dialog.querySelectorAll<HTMLElement>('button:not([disabled]),textarea,input')];const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus()};},[confirmation,busy]);
   const act = async () => {
     if (!confirmation || busy) return
     setBusy(true)
@@ -93,7 +84,7 @@ export default function Bookings({
       setBusy(false)
     }
   }
-  const visible = error ? [] : bookings
+  const visible = bookings
   return (
     <div
       className={
@@ -114,7 +105,7 @@ export default function Bookings({
                 ? "Booking Requests"
                 : "My Bookings"}
           </h1>
-          <p>{error ? "Counts unavailable" : loading?"Loading count…":total} matching bookings · Updated automatically</p>
+          <p>{total} matching bookings · Updated automatically</p>
         </div>
         <label className="listing-sort">
           <span>Status</span>
@@ -123,10 +114,8 @@ export default function Bookings({
             onChange={(event) => setStatus(event.target.value)}
           >
             <option value="">All statuses</option>
-            {status.startsWith("booking:")&&<option value={status}>Booking #{status.slice(8)}</option>}
             {[
               "active",
-              "completed",
               "pending",
               "approved",
               "confirmed",
@@ -140,7 +129,6 @@ export default function Bookings({
           </select>
         </label>
       </div>
-      {chatError&&<p role="alert" className="form-error-message">{chatError}</p>}
       {error && (
         <div className="listing-state" role="alert">
           <p>{error}</p>
@@ -211,7 +199,6 @@ export default function Bookings({
                 </p>
               </details>
               <footer>
-                {owner && <button className="button button-secondary" disabled={chatBusy!==null} onClick={()=>void openChat(booking)}>{chatBusy===booking.id?"Opening chat…":"Message Renter"}</button>}
                 <button
                   className="button button-secondary"
                   onClick={() => onProperty(booking.propertyId)}
@@ -241,7 +228,7 @@ export default function Bookings({
                   </>
                 ) : (
                   renter &&
-                  ["pending", "approved", "confirmed"].includes(booking.status) && (
+                  ["pending", "approved"].includes(booking.status) && (
                     <button
                       className="button button-secondary"
                       onClick={() =>
